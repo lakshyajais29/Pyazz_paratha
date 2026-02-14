@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 
+import '../../onboarding/controller/onboarding_controller.dart';
+
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final controller = OnboardingController();
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0), // Light beige from mockup
       appBar: AppBar(
@@ -120,11 +124,11 @@ class ProfileScreen extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('28 years old', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Text('${controller.age} years old', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(width: 8),
                     Container(height: 4, width: 4, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
                     const SizedBox(width: 8),
-                    const Text('BURN FAT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                    Text(controller.goal.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
                   ],
                 ),
               ),
@@ -212,35 +216,41 @@ class ProfileScreen extends StatelessWidget {
                // Health Tags
                Row(
                  children: [
-                   Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                     decoration: BoxDecoration(
-                       color: AppColors.primary,
-                       borderRadius: BorderRadius.circular(20),
-                     ),
-                     child: const Row(
-                       children: [
-                         Icon(Icons.monitor_heart, color: Colors.white, size: 16),
-                         SizedBox(width: 8),
-                         Text('Blood Pressure', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                       ],
-                     ),
-                   ),
-                   const SizedBox(width: 12),
-                   Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                     decoration: BoxDecoration(
-                       color: const Color(0xFFFFE0B2), // Light orange
-                       borderRadius: BorderRadius.circular(20),
-                     ),
-                     child: const Row(
-                       children: [
-                         Icon(Icons.block, color: AppColors.primary, size: 16), // Use check or block
-                         SizedBox(width: 8),
-                         Text('None', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
-                       ],
-                     ),
-                   ),
+                   if (controller.healthConditions.isEmpty)
+                     Container(
+                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                       decoration: BoxDecoration(
+                         color: const Color(0xFFFFE0B2), // Light orange
+                         borderRadius: BorderRadius.circular(20),
+                       ),
+                       child: const Row(
+                         children: [
+                           Icon(Icons.check_circle, color: AppColors.primary, size: 16),
+                           SizedBox(width: 8),
+                           Text('No Conditions', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                         ],
+                       ),
+                     )
+                   else
+                     ...controller.healthConditions.map((condition) => 
+                       Padding(
+                         padding: const EdgeInsets.only(right: 12.0),
+                         child: Container(
+                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                           decoration: BoxDecoration(
+                             color: AppColors.primary,
+                             borderRadius: BorderRadius.circular(20),
+                           ),
+                           child: Row(
+                             children: [
+                               const Icon(Icons.monitor_heart, color: Colors.white, size: 16),
+                               const SizedBox(width: 8),
+                               Text(condition, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                             ],
+                           ),
+                         ),
+                       )
+                     ).toList(),
                  ],
                ),
                const SizedBox(height: 12),
@@ -274,11 +284,11 @@ class ProfileScreen extends StatelessWidget {
                  ),
                  child: Column(
                    children: [
-                     _buildSettingsItem(Icons.restaurant, 'Diet Preferences', 'Vegetarian'),
+                     _buildSettingsItem(Icons.restaurant, 'Diet Preferences', controller.dietType),
                      _buildDivider(),
-                     _buildSettingsItem(Icons.medical_services, 'Health Conditions', ''),
+                     _buildSettingsItem(Icons.medical_services, 'Health Conditions', controller.healthConditions.join(', ')),
                      _buildDivider(),
-                     _buildSettingsItem(Icons.track_changes, 'Goals', 'Burn Fat'),
+                     _buildSettingsItem(Icons.track_changes, 'Goals', controller.goal),
                      _buildDivider(),
                      _buildSettingsItem(Icons.notifications, 'Meal Reminders', ''),
                      _buildDivider(),

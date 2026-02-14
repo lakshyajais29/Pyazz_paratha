@@ -39,7 +39,7 @@ class _HealthConditionScreenState extends State<HealthConditionScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'NOURISHAI', 
+          'SNAPDIET', 
           style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 14, 

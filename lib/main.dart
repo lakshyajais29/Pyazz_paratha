@@ -3,6 +3,7 @@ import 'core/theme/app_theme.dart';
 import 'features/onboarding/screens/splash_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const SnapDietApp());
 }
 

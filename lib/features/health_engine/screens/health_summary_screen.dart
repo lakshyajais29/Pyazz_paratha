@@ -2,11 +2,27 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../onboarding/screens/health_condition_screen.dart'; // Back to onboarding check
 
+import '../../onboarding/controller/onboarding_controller.dart';
+
 class HealthSummaryScreen extends StatelessWidget {
   const HealthSummaryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final controller = OnboardingController();
+    
+    // Calculations
+    final double heightM = controller.height / 100;
+    final double bmi = controller.weight / (heightM * heightM);
+    
+    // BMR (Mifflin-St Jeor)
+    double bmr;
+    if (controller.gender == 'Male') {
+      bmr = (10 * controller.weight) + (6.25 * controller.height) - (5 * controller.age) + 5;
+    } else {
+      bmr = (10 * controller.weight) + (6.25 * controller.height) - (5 * controller.age) - 161;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -59,9 +75,9 @@ class HealthSummaryScreen extends StatelessWidget {
             // Stats Grid
             Row(
               children: [
-                Expanded(child: _buildStatCard('BMR', '1850', 'kcal/day', Icons.local_fire_department, Colors.orangeAccent)),
+                Expanded(child: _buildStatCard('BMR', bmr.toStringAsFixed(0), 'kcal/day', Icons.local_fire_department, Colors.orangeAccent)),
                 const SizedBox(width: 16),
-                Expanded(child: _buildStatCard('BMI', '22.4', 'Normal', Icons.accessibility, Colors.blueAccent)),
+                Expanded(child: _buildStatCard('BMI', bmi.toStringAsFixed(1), _getBMICategory(bmi), Icons.accessibility, Colors.blueAccent)),
               ],
             ),
             const SizedBox(height: 16),
@@ -95,6 +111,13 @@ class HealthSummaryScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getBMICategory(double bmi) {
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
   }
 
   Widget _buildStatCard(String title, String value, String unit, IconData icon, Color color) {

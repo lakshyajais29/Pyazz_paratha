@@ -133,169 +133,26 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               
               const SizedBox(height: 40),
 
-              // Weight & Height Row
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Weight Section
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text(
-                          'WEIGHT',
-                          style: TextStyle(
-                            fontSize: 10,
-                            letterSpacing: 1.5,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        // Weight Display
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  _weight.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const Text(
-                                  'KG',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        // Weight Slider
-                        SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            activeTrackColor: AppColors.primary,
-                            inactiveTrackColor: Colors.grey[200],
-                            thumbColor: AppColors.primary,
-                            overlayColor: AppColors.primary.withOpacity(0.2),
-                          ),
-                          child: Slider(
-                            value: _weight,
-                            min: 30,
-                            max: 150,
-                            onChanged: (value) {
-                              setState(() {
-                                _weight = value;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Height Section
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text(
-                          'HEIGHT',
-                          style: TextStyle(
-                            fontSize: 10,
-                            letterSpacing: 1.5,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              height: 200,
-                              width: 80,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(40),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [Colors.white, AppColors.primary.withOpacity(0.05)],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    _height.toInt().toString(),
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const Text(
-                                    'CM',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            SizedBox(
-                              height: 200,
-                              child: RotatedBox(
-                                quarterTurns: 3,
-                                child: SliderTheme(
-                                  data: SliderTheme.of(context).copyWith(
-                                    activeTrackColor: AppColors.primary,
-                                    inactiveTrackColor: Colors.grey[200],
-                                    thumbColor: AppColors.primary,
-                                    trackHeight: 4,
-                                  ),
-                                  child: Slider(
-                                    value: _height,
-                                    min: 100,
-                                    max: 250,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _height = value;
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              // Weight Section
+              _buildMeasurementCard(
+                title: 'WEIGHT',
+                value: _weight,
+                unit: 'KG',
+                min: 30,
+                max: 150,
+                onChanged: (val) => setState(() => _weight = val),
+              ),
+              
+              const SizedBox(height: 24),
+
+              // Height Section
+              _buildMeasurementCard(
+                title: 'HEIGHT',
+                value: _height,
+                unit: 'CM',
+                min: 100,
+                max: 250,
+                onChanged: (val) => setState(() => _height = val),
               ),
               
               const SizedBox(height: 40),
@@ -391,6 +248,95 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       width: 20,
       height: 2,
       color: Colors.grey[300],
+    );
+  }
+
+  Widget _buildMeasurementCard({
+    required String title,
+    required double value,
+    required String unit,
+    required double min,
+    required double max,
+    required Function(double) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              letterSpacing: 1.5,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                unit,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: AppColors.primary,
+              inactiveTrackColor: Colors.grey[100],
+              thumbColor: AppColors.primary,
+              overlayColor: AppColors.primary.withOpacity(0.1),
+              trackHeight: 6,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
+            ),
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              onChanged: onChanged,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(min.toInt().toString(), style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                Text(max.toInt().toString(), style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -43,12 +43,19 @@ class RecipeDetailScreen extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(
-                      recipe.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => 
-                          Icon(Icons.broken_image, size: 100, color: Colors.grey[400]),
-                    ),
+                    recipe.imageUrl.startsWith('http') 
+                      ? Image.network(
+                          recipe.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => 
+                              Icon(Icons.broken_image, size: 100, color: Colors.grey[400]),
+                        )
+                      : Image.asset(
+                          recipe.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => 
+                              Container(color: Colors.grey[300], child: const Icon(Icons.image, size: 50, color: Colors.grey)),
+                        ),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(

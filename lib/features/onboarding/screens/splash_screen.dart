@@ -68,10 +68,13 @@ class _SplashScreenState extends State<SplashScreen> {
               
               // Logo Text
               Text(
-                'NourishAi',
+                'SnapDiet',
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  fontSize: 40,
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'DM Serif Display',
                   color: AppColors.textPrimary,
+                  letterSpacing: 1.2,
                 ),
               ),
               const SizedBox(height: 16),
@@ -129,7 +132,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                '© 2024 NOURISHAI LABS',
+                '© 2024 SNAPDIET LABS',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ],
