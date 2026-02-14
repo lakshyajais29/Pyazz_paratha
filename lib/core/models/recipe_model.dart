@@ -48,9 +48,9 @@ class Recipe {
     // Extract calories — handle both upper/lowercase keys from different endpoints
     final calories = toInt(json['Calories'] ?? json['calories'] ?? json['energy (kcal)'] ?? json['Energy (kcal)']);
     final energyKcal = toDouble(json['Energy (kcal)'] ?? json['energy (kcal)'] ?? 0);
-    final protein = toDouble(json['ProteinContent'] ?? json['protein (g)'] ?? json['Protein (g)']);
-    final carbs = toDouble(json['CarbohydrateContent'] ?? json['carbohydrate, by difference (g)'] ?? json['Carbohydrate, by difference (g)']);
-    final fat = toDouble(json['FatContent'] ?? json['total lipid (fat) (g)'] ?? json['Total lipid (fat) (g)']);
+    final protein = toDouble(json['protein'] ?? json['ProteinContent'] ?? json['protein (g)'] ?? json['Protein (g)']);
+    final carbs = toDouble(json['carbohydrate'] ?? json['carbs'] ?? json['CarbohydrateContent'] ?? json['carbohydrate, by difference (g)'] ?? json['Carbohydrate, by difference (g)']);
+    final fat = toDouble(json['fat'] ?? json['FatContent'] ?? json['total lipid (fat) (g)'] ?? json['Total lipid (fat) (g)']);
 
     // Extract image — both endpoints provide img_url
     String img = '';
@@ -156,7 +156,7 @@ class Recipe {
     }
 
     // Title (handle both upper/lowercase)
-    final title = (json['Recipe_title'] ?? json['recipe_title'] ?? json['Name'] ?? json['name'] ?? 'Untitled Recipe').toString();
+    final title = (json['title'] ?? json['Recipe_title'] ?? json['recipe_title'] ?? json['Name'] ?? json['name'] ?? 'Untitled Recipe').toString();
     // Clean title — remove excess quotes
     final cleanTitle = title.replaceAll(RegExp(r'^["\s]+|["\s]+$'), '');
 
@@ -179,5 +179,24 @@ class Recipe {
       subRegion: subRegion,
       sourceUrl: (json['url'] ?? '').toString(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'recipe_id': id,
+      'title': title,
+      'description': description,
+      'img_url': imageUrl,
+      'total_time': cookingTimeMinutes,
+      'calories': calories,
+      'protein': macros['protein'],
+      'carbs': macros['carbs'],
+      'fat': macros['fat'],
+      'ingredients': ingredients,
+      'instructions': instructions,
+      'region': region,
+      'sub_region': subRegion,
+      'url': sourceUrl,
+    };
   }
 }

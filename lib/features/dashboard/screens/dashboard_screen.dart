@@ -322,9 +322,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _buildMacroItem('Protein', '${_controller.proteinCurrent}g', _controller.proteinCurrent / _controller.proteinGoal, Colors.green),
-                              _buildMacroItem('Carbs', '${_controller.carbsCurrent}g', _controller.carbsCurrent / _controller.carbsGoal, Colors.orange),
-                              _buildMacroItem('Fat', '${_controller.fatCurrent}g', _controller.fatCurrent / _controller.fatGoal, Colors.redAccent),
+                              _buildMacroItem('Protein', '${_controller.proteinCurrent.toStringAsFixed(0)}g', _controller.proteinCurrent / _controller.proteinGoal, Colors.green),
+                              _buildMacroItem('Carbs', '${_controller.carbsCurrent.toStringAsFixed(0)}g', _controller.carbsCurrent / _controller.carbsGoal, Colors.orange),
+                              _buildMacroItem('Fat', '${_controller.fatCurrent.toStringAsFixed(0)}g', _controller.fatCurrent / _controller.fatGoal, Colors.redAccent),
                             ],
                           ),
                         ],
@@ -333,104 +333,154 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Smart Suggestion (Next Meal)
-                     Text(
-                      'UP NEXT',
-                      style: TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                         fontWeight: FontWeight.bold,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () {
-                         Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RecipeDetailScreen(recipe: _controller.nextMeal),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                           boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.05),
-                              blurRadius: 15,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
+                    // Smart Suggestions (List)
+                     if (_controller.recommendedMeals.isEmpty && _controller.isLoading)
+                       const Center(child: CircularProgressIndicator())
+                     else ...[
+                       Text(
+                        'UP NEXT',
+                        style: TextStyle(
+                          fontSize: 12,
+                          letterSpacing: 1.5,
+                           fontWeight: FontWeight.bold,
+                          color: Colors.grey[600],
                         ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: _controller.nextMeal.imageUrl.startsWith('http')
-                                  ? Image.network(
-                                      _controller.nextMeal.imageUrl,
-                                      width: 80,
-                                      height: 80,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (c, o, s) => Container(width: 80, height: 80, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
-                                    )
-                                  : Image.asset(
-                                      _controller.nextMeal.imageUrl,
-                                      width: 80,
-                                      height: 80,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (c, o, s) => Container(width: 80, height: 80, color: Colors.grey[200]),
-                                    ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      'LUNCH RECOMMENDATION',
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _controller.nextMeal.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${_controller.nextMeal.calories} kcal • ${_controller.nextMeal.cookingTimeMinutes} min',
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 12,
-                                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _controller.recommendedMeals.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final recommendation = _controller.recommendedMeals[index];
+                          final recipe = recommendation.recipe;
+                          
+                          return GestureDetector(
+                            onTap: () {
+                               Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RecipeDetailScreen(recipe: recipe),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: recommendation.warnings.isNotEmpty 
+                                    ? Border.all(color: Colors.red.withOpacity(0.5), width: 1)
+                                    : null,
+                                 boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.05),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 5),
                                   ),
                                 ],
                               ),
+                              child: Row(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: recipe.imageUrl.startsWith('http')
+                                        ? Image.network(
+                                            recipe.imageUrl,
+                                            width: 80,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (c, o, s) => Container(width: 80, height: 80, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+                                          )
+                                        : Image.asset(
+                                            recipe.imageUrl,
+                                            width: 80,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (c, o, s) => Container(width: 80, height: 80, color: Colors.grey[200]),
+                                          ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (recommendation.warnings.isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            margin: const EdgeInsets.only(bottom: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red[50],
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: Colors.red[100]!),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.warning_amber_rounded, size: 12, color: Colors.red),
+                                                const SizedBox(width: 4),
+                                                Flexible(
+                                                  child: Text(
+                                                    recommendation.warnings.first,
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.red,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          )
+                                        else
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              recommendation.tag.toUpperCase(),
+                                              style: const TextStyle(
+                                                fontSize: 8,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          recipe.title,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${recipe.calories} kcal • ${recipe.cookingTimeMinutes} min',
+                                          style: TextStyle(
+                                            color: Colors.grey[500],
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                                ],
+                              ),
                             ),
-                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    ),
+                     ],
                   ],
                 ),
               ),

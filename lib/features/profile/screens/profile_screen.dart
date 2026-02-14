@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
-
+import 'favorites_screen.dart';
 import '../../onboarding/controller/onboarding_controller.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -213,45 +213,49 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               
+
                // Health Tags
-               Row(
-                 children: [
-                   if (controller.healthConditions.isEmpty)
-                     Container(
-                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                       decoration: BoxDecoration(
-                         color: const Color(0xFFFFE0B2), // Light orange
-                         borderRadius: BorderRadius.circular(20),
-                       ),
-                       child: const Row(
-                         children: [
-                           Icon(Icons.check_circle, color: AppColors.primary, size: 16),
-                           SizedBox(width: 8),
-                           Text('No Conditions', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
-                         ],
-                       ),
-                     )
-                   else
-                     ...controller.healthConditions.map((condition) => 
-                       Padding(
-                         padding: const EdgeInsets.only(right: 12.0),
-                         child: Container(
-                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                           decoration: BoxDecoration(
-                             color: AppColors.primary,
-                             borderRadius: BorderRadius.circular(20),
-                           ),
-                           child: Row(
-                             children: [
-                               const Icon(Icons.monitor_heart, color: Colors.white, size: 16),
-                               const SizedBox(width: 8),
-                               Text(condition, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                             ],
-                           ),
+               SingleChildScrollView(
+                 scrollDirection: Axis.horizontal,
+                 child: Row(
+                   children: [
+                     if (controller.healthConditions.isEmpty)
+                       Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                         decoration: BoxDecoration(
+                           color: const Color(0xFFFFE0B2), // Light orange
+                           borderRadius: BorderRadius.circular(20),
+                         ),
+                         child: const Row(
+                           children: [
+                             Icon(Icons.check_circle, color: AppColors.primary, size: 16),
+                             SizedBox(width: 8),
+                             Text('No Conditions', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                           ],
                          ),
                        )
-                     ).toList(),
-                 ],
+                     else
+                       ...controller.healthConditions.map((condition) => 
+                         Padding(
+                           padding: const EdgeInsets.only(right: 12.0),
+                           child: Container(
+                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                             decoration: BoxDecoration(
+                               color: AppColors.primary,
+                               borderRadius: BorderRadius.circular(20),
+                             ),
+                             child: Row(
+                               children: [
+                                 const Icon(Icons.monitor_heart, color: Colors.white, size: 16),
+                                 const SizedBox(width: 8),
+                                 Text(condition, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                               ],
+                             ),
+                           ),
+                         )
+                       ).toList(),
+                   ],
+                 ),
                ),
                const SizedBox(height: 12),
                // Add Condition Button
@@ -286,6 +290,18 @@ class ProfileScreen extends StatelessWidget {
                    children: [
                      _buildSettingsItem(Icons.restaurant, 'Diet Preferences', controller.dietType),
                      _buildDivider(),
+                     _buildSettingsItem(
+                       Icons.favorite, 
+                       'Saved Recipes', 
+                       'Your collection of favorite meals',
+                       onTap: () {
+                         Navigator.push(
+                           context, 
+                           MaterialPageRoute(builder: (context) => const FavoritesScreen())
+                         );
+                       }
+                     ),
+                     _buildDivider(),
                      _buildSettingsItem(Icons.medical_services, 'Health Conditions', controller.healthConditions.join(', ')),
                      _buildDivider(),
                      _buildSettingsItem(Icons.track_changes, 'Goals', controller.goal),
@@ -294,8 +310,7 @@ class ProfileScreen extends StatelessWidget {
                      _buildDivider(),
                      _buildSettingsItem(Icons.mic, 'Voice Settings', ''),
                      _buildDivider(),
-                     _buildSwitchItem(Icons.dark_mode, 'Dark Mode'),
-                     _buildDivider(),
+
                      _buildSettingsItem(
                        Icons.logout, 
                        'Sign Out', 

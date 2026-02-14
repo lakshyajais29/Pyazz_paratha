@@ -4,6 +4,7 @@ import '../../../core/models/recipe_model.dart';
 import '../../../core/services/recipe_service.dart';
 import '../../../core/services/recipedb_service.dart';
 import 'recipe_detail_screen.dart';
+import '../../onboarding/controller/onboarding_controller.dart';
 
 class RecipeListScreen extends StatefulWidget {
   final String? moodFilter;
@@ -21,6 +22,10 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   List<Recipe> _allRecipes = []; // Full list for local filtering
   bool _isLoading = true;
   bool _isSearching = false;
+  String? _selectedFilter; // Currently selected filter (null = none)
+
+  // Filter definitions
+  final List<String> _filters = ['Breakfast', 'Under 30 min', 'High Protein', 'Vegetarian'];
 
   @override
   void initState() {
@@ -38,26 +43,103 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
     setState(() => _isLoading = true);
     List<Recipe> recipes;
     if (widget.moodFilter != null && widget.moodFilter!.isNotEmpty) {
-      recipes = await _recipeDbService.getRecipesByRegion(widget.moodFilter!, limit: 20);
+      recipes = await _recipeDbService.getRecipesByRegion(widget.moodFilter!, limit: 50);
       if (recipes.isEmpty) {
-        recipes = await _recipeService.getRecipes(page: 1, limit: 20);
+        recipes = await _recipeService.getRecipes(page: 1, limit: 50);
       }
     } else {
-      recipes = await _recipeService.getRecipes(page: 1, limit: 20);
+      recipes = await _recipeService.getRecipes(page: 1, limit: 50);
     }
     if (mounted) {
       setState(() {
-        _recipes = recipes;
         _allRecipes = recipes;
         _isLoading = false;
+        _applyFilter(); // Apply current filter after fetching
       });
     }
+  }
+
+  /// Apply the selected filter on _allRecipes and update _recipes
+  void _applyFilter() {
+    if (_selectedFilter == null) {
+      _recipes = List.from(_allRecipes);
+      return;
+    }
+
+    switch (_selectedFilter) {
+      case 'Breakfast':
+        _recipes = _allRecipes.where((r) {
+          final titleLower = r.title.toLowerCase();
+          final descLower = r.description.toLowerCase();
+          return titleLower.contains('breakfast') ||
+              titleLower.contains('pancake') ||
+              titleLower.contains('oatmeal') ||
+              titleLower.contains('egg') ||
+              titleLower.contains('toast') ||
+              titleLower.contains('cereal') ||
+              titleLower.contains('smoothie') ||
+              titleLower.contains('muffin') ||
+              titleLower.contains('waffle') ||
+              titleLower.contains('omelette') ||
+              titleLower.contains('omelet') ||
+              descLower.contains('breakfast');
+        }).toList();
+        break;
+      case 'Under 30 min':
+        _recipes = _allRecipes.where((r) {
+          return r.cookingTimeMinutes > 0 && r.cookingTimeMinutes <= 30;
+        }).toList();
+        break;
+      case 'High Protein':
+        _recipes = _allRecipes.where((r) {
+          final protein = r.macros['protein'] ?? 0;
+          return protein >= 15; // 15g+ protein considered high
+        }).toList();
+        break;
+      case 'Vegetarian':
+        _recipes = _allRecipes.where((r) {
+          final titleLower = r.title.toLowerCase();
+          final ingredientsLower = r.ingredients.join(' ').toLowerCase();
+          // Exclude recipes with obvious non-veg keywords
+          final nonVegKeywords = ['chicken', 'beef', 'pork', 'lamb', 'fish', 'shrimp',
+            'salmon', 'tuna', 'bacon', 'sausage', 'steak', 'turkey', 'meat', 'prawn',
+            'crab', 'lobster', 'ham', 'duck', 'venison', 'anchov'];
+          return !nonVegKeywords.any((k) =>
+              titleLower.contains(k) || ingredientsLower.contains(k));
+        }).toList();
+        break;
+      default:
+        _recipes = List.from(_allRecipes);
+    }
+    
+    // Sort by health warnings: Safe first, Warned last
+    final controller = OnboardingController();
+    _recipes.sort((a, b) {
+      final aWarn = controller.getHealthWarningsForIngredients(a.ingredients).isNotEmpty;
+      final bWarn = controller.getHealthWarningsForIngredients(b.ingredients).isNotEmpty;
+      if (aWarn && !bWarn) return 1;
+      if (!aWarn && bWarn) return -1;
+      return 0;
+    });
+  }
+
+  void _onFilterTap(String filter) {
+    setState(() {
+      // If same filter tapped again, deselect it (show all)
+      if (_selectedFilter == filter) {
+        _selectedFilter = null;
+      } else {
+        _selectedFilter = filter;
+      }
+      _applyFilter();
+    });
   }
 
   Future<void> _searchRecipes(String query) async {
     if (query.trim().isEmpty) {
       setState(() {
-        _recipes = _allRecipes;
+        _selectedFilter = null; // Reset filter on empty search
+        _applyFilter();
         _isSearching = false;
       });
       return;
@@ -70,7 +152,9 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
     
     if (mounted) {
       setState(() { 
-        _recipes = apiResults; 
+        _allRecipes = apiResults;
+        _selectedFilter = null; // Reset filter on new search
+        _applyFilter();
         _isSearching = false; 
       });
     }
@@ -93,6 +177,7 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
             icon: const Icon(Icons.refresh, color: AppColors.primary),
             onPressed: () {
               _searchController.clear();
+              _selectedFilter = null;
               _fetchRecipes();
             },
           ),
@@ -139,16 +224,13 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
             ),
             const SizedBox(height: 20),
             
-            // Filter Chips
+            // Filter Chips — single selection
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: [
-                  _buildFilterChip('Breakfast', true),
-                  _buildFilterChip('Under 30 min', false),
-                  _buildFilterChip('High Protein', false),
-                  _buildFilterChip('Vegetarian', false),
-                ],
+                children: _filters.map((filter) => 
+                  _buildFilterChip(filter, _selectedFilter == filter)
+                ).toList(),
               ),
             ),
             const SizedBox(height: 20),
@@ -165,14 +247,25 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                           Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
                           const SizedBox(height: 16),
                           Text(
-                            'No recipes found',
+                            _selectedFilter != null 
+                              ? 'No "$_selectedFilter" recipes found'
+                              : 'No recipes found',
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[400]),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Try a different search term or ingredient',
+                            _selectedFilter != null
+                              ? 'Try removing the filter or refresh for more recipes'
+                              : 'Try a different search term or ingredient',
                             style: TextStyle(fontSize: 14, color: Colors.grey[400]),
                           ),
+                          if (_selectedFilter != null) ...[
+                            const SizedBox(height: 16),
+                            TextButton(
+                              onPressed: () => _onFilterTap(_selectedFilter!),
+                              child: const Text('Clear Filter', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
                         ],
                       ),
                     )
@@ -180,6 +273,8 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
               itemCount: _recipes.length,
               itemBuilder: (context, index) {
                 final recipe = _recipes[index];
+                final warnings = OnboardingController().getHealthWarningsForIngredients(recipe.ingredients);
+
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -194,6 +289,9 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
+                        border: warnings.isNotEmpty 
+                            ? Border.all(color: Colors.red.withOpacity(0.5), width: 1)
+                            : null,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.grey.withOpacity(0.1),
@@ -271,6 +369,29 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                                       ),
                                     ),
                                   ),
+                                  if (warnings.isNotEmpty)
+                                    Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red[50],
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(color: Colors.red[100]!),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 16),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Health Alert',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.red),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -282,6 +403,14 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                if (warnings.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: Text(
+                                      warnings.first,
+                                      style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
                                 Text(
                                   recipe.title,
                                   style: const TextStyle(
@@ -325,17 +454,37 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   }
 
   Widget _buildFilterChip(String label, bool isSelected) {
-    return Container(
-      margin: const EdgeInsets.only(right: 10),
-      child: Chip(
-        label: Text(label),
-        backgroundColor: isSelected ? AppColors.primary : Colors.white,
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : AppColors.textSecondary,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return GestureDetector(
+      onTap: () => _onFilterTap(label),
+      child: Container(
+        margin: const EdgeInsets.only(right: 10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.white,
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : Colors.grey[300]!,
+              width: 1.5,
+            ),
+            boxShadow: isSelected ? [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ] : [],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : AppColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey[200]!),
       ),
     );
   }

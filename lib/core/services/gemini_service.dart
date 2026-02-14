@@ -152,8 +152,43 @@ If unsure, estimate.'''
     return null;
   }
 
-  Future<List<String>?> _generateWithProvider(_ProviderConfig provider, String title) async {
+  /// Generate ingredients for a given title
+  Future<List<String>?> generateIngredients(String recipeTitle) async {
+    final providers = [
+      _ProviderConfig(
+        name: 'Mistral AI (Primary)',
+        url: AppStrings.mistralApiUrl,
+        apiKey: AppStrings.mistralApiKeyPrimary,
+        model: 'pixtral-12b-2409',
+      ),
+      _ProviderConfig(
+        name: 'Mistral AI (Secondary)',
+        url: AppStrings.mistralApiUrl,
+        apiKey: AppStrings.mistralApiKeySecondary,
+        model: 'pixtral-12b-2409',
+      ),
+    ];
+
+    for (final provider in providers) {
+      try {
+        final result = await _generateWithProvider(provider, recipeTitle, isIngredients: true);
+        if (result != null && result.isNotEmpty) {
+          return result;
+        }
+      } catch (e) {
+        debugPrint('Failed ingredient generation with ${provider.name}: $e');
+      }
+    }
+    return null;
+  }
+
+  Future<List<String>?> _generateWithProvider(_ProviderConfig provider, String title, {bool isIngredients = false}) async {
     final authHeader = 'Bearer ${provider.apiKey}';
+    
+    final prompt = isIngredients 
+        ? 'List the ingredients for "$title". Provide ONLY the ingredients as a simple list. Do not include quantities unless crucial. Do not include numbering or bullets.'
+        : 'Write a simple, step-by-step cooking recipe for "$title". Provide ONLY the instructions as a numbered list. Do not include ingredients or intro text.';
+
     final response = await http.post(
       Uri.parse(provider.url),
       headers: {
@@ -161,15 +196,15 @@ If unsure, estimate.'''
         'Content-Type': 'application/json',
       },
       body: json.encode({
-        'model': provider.model, // Reuse Pixtral model for text is fine
+        'model': provider.model, 
         'messages': [
           {
             'role': 'user',
-            'content': 'Write a simple, step-by-step cooking recipe for "$title". Provide ONLY the instructions as a numbered list. Do not include ingredients or intro text.'
+            'content': prompt
           }
         ],
         'max_tokens': 500,
-        'temperature': 0.7,
+        'temperature': isIngredients ? 0.3 : 0.7, // Lower temperature for ingredients to be more factual
       }),
     ).timeout(const Duration(seconds: 30));
 
@@ -180,11 +215,11 @@ If unsure, estimate.'''
         // Clean up the response to get a list of strings
         final String text = content.toString();
         // Split by newlines and remove numbering/bullets
-        final List<String> steps = text.split('\n')
+        final List<String> items = text.split('\n')
             .where((line) => line.trim().isNotEmpty)
             .map((line) => line.replaceAll(RegExp(r'^\d+\.\s*|[-*]\s*'), '').replaceAll('**', '').trim())
             .toList();
-        return steps;
+        return items;
       }
     }
     return null;

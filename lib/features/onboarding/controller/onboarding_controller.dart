@@ -89,22 +89,71 @@ class OnboardingController {
   // or when leaving a screen, rather than on every keystroke.
   // The current implementation assumes saveUserData() is called explicitly, e.g. on "Next/Finish" button.
   
-  /// Get exclude ingredients based on health conditions
+  /// Get exclude ingredients based on strict dietary rules (e.g. Jain)
+  /// Health conditions are now handled via warnings, not strict exclusion.
   List<String> getExcludeIngredients() {
     List<String> excludes = [];
-    if (healthConditions.contains('Diabetes')) {
-      excludes.addAll(['sugar', 'honey', 'corn syrup']);
-    }
-    if (healthConditions.contains('Cholesterol')) {
-      excludes.addAll(['butter', 'lard', 'cream']);
-    }
-    if (healthConditions.contains('Blood Pressure')) {
-      excludes.addAll(['salt', 'soy sauce']);
-    }
+    // Health restrictions are now handled in getHealthWarningsForIngredients
+    // to show alerts instead of hiding them.
+    
     if (jainFood) {
       excludes.addAll(['onion', 'garlic', 'potato']);
     }
     return excludes;
+  }
+
+  /// Get warnings for ingredients based on health conditions
+  List<String> getHealthWarningsForIngredients(List<String> ingredients) {
+    List<String> warnings = [];
+    final lowerIngredients = ingredients.map((i) => i.toLowerCase()).toList();
+
+    if (healthConditions.contains('Diabetes')) {
+      if (lowerIngredients.any((i) => 
+          i.contains('sugar') || 
+          i.contains('honey') || 
+          i.contains('syrup') || 
+          i.contains('sweetener') ||
+          i.contains('chocolate') ||
+          i.contains('cake') ||
+          i.contains('candy')
+      )) {
+        warnings.add('High Sugar Content (Diabetes Risk)');
+      }
+    }
+    
+    if (healthConditions.contains('Cholesterol') || healthConditions.contains('Heart Disease')) {
+      if (lowerIngredients.any((i) => 
+          i.contains('butter') || 
+          i.contains('cream') || 
+          i.contains('lard') || 
+          i.contains('ghee') ||
+          i.contains('bacon') ||
+          i.contains('sausage') ||
+          i.contains('fried')
+      )) {
+         warnings.add('High Saturated Fat (Heart Health Risk)');
+      }
+    }
+    
+    if (healthConditions.contains('Blood Pressure') || healthConditions.contains('Hypertension')) {
+      if (lowerIngredients.any((i) => 
+          i.contains('salt') || 
+          i.contains('soy sauce') || 
+          i.contains('sodium') ||
+          i.contains('pickle') ||
+          i.contains('canned')
+      )) {
+         warnings.add('High Sodium (Blood Pressure Risk)');
+      }
+    }
+
+    if (jainFood) {
+      if (lowerIngredients.any((i) => i.contains('onion') || i.contains('garlic') || i.contains('potato'))) {
+        warnings.add('Contains Restricted Roots (Jain Diet)');
+      }
+    }
+    
+    return warnings;
   }
 
   /// Get exclude categories based on diet type

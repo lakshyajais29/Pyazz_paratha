@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/recipe_model.dart';
+import '../../../core/models/nutrition_model.dart';
 import '../../../core/services/recipe_service.dart';
 import '../../../core/services/gemini_service.dart';
-import '../../cooking_assistant/screens/cooking_screen.dart'; // Navigate to Cooking
+import '../../dashboard/controller/dashboard_controller.dart';
+import '../../cooking_assistant/screens/cooking_screen.dart';
+import '../../onboarding/controller/onboarding_controller.dart';
+import '../../profile/controller/favorites_controller.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final Recipe recipe;
@@ -17,6 +21,7 @@ class RecipeDetailScreen extends StatefulWidget {
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   final RecipeService _recipeService = RecipeService();
   final GeminiService _geminiService = GeminiService(); // Mistral AI Service
+  final FavoritesController _favoritesController = FavoritesController();
   Recipe? _detailedRecipe;
   bool _isLoading = true;
   String? _errorMessage;
@@ -26,6 +31,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   void initState() {
     super.initState();
     _fetchRecipeDetails();
+    _favoritesController.loadFavorites().then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _fetchRecipeDetails() async {
@@ -70,11 +78,40 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             );
           }
         } catch (e) {
-          debugPrint('AI Generation failed: $e');
+          debugPrint('AI Instruction Generation failed: $e');
         } finally {
           if (mounted) setState(() => _isGeneratingAI = false);
         }
       }
+
+      // Always try to improve ingredients with AI if they look like utensils or are very short
+      // For now, per user request, we auto-generate ingredients to replace the current ones 
+      // which are often just utensils.
+      if (mounted) setState(() => _isGeneratingAI = true);
+        try {
+           final aiIngredients = await _geminiService.generateIngredients(finalRecipe!.title);
+           if (aiIngredients != null && aiIngredients.isNotEmpty) {
+             finalRecipe = Recipe(
+               id: finalRecipe!.id,
+               title: finalRecipe!.title,
+               description: finalRecipe!.description,
+               imageUrl: finalRecipe!.imageUrl,
+               cookingTimeMinutes: finalRecipe!.cookingTimeMinutes,
+               calories: finalRecipe!.calories,
+               ingredients: aiIngredients, // Replace with AI ingredients
+               instructions: finalRecipe!.instructions,
+               macros: finalRecipe!.macros,
+               rating: finalRecipe!.rating,
+               region: finalRecipe!.region,
+               subRegion: finalRecipe!.subRegion,
+               sourceUrl: finalRecipe!.sourceUrl,
+             );
+           }
+        } catch (e) {
+           debugPrint('AI Ingredient Generation failed: $e');
+        } finally {
+           if (mounted) setState(() => _isGeneratingAI = false);
+        }
 
       if (mounted) {
         setState(() {
@@ -85,6 +122,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          // Fallback to original recipe
           _detailedRecipe = widget.recipe; // Fallback to original recipe
           _isLoading = false;
           _errorMessage = 'Could not load full recipe details';
@@ -145,10 +183,38 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     }
   }
 
+  void _logMeal() {
+    final recipe = _detailedRecipe ?? widget.recipe;
+    
+    // Create NutritionInfo from Recipe
+    final nutrition = NutritionInfo(
+      foodName: recipe.title,
+      calories: recipe.calories,
+      protein: recipe.macros['protein'] ?? 0.0,
+      carbs: recipe.macros['carbs'] ?? 0.0,
+      fat: recipe.macros['fat'] ?? 0.0,
+      servingSize: '1 serving',
+    );
+
+    // Log to DashboardController
+    DashboardController().logMeal(nutrition);
+
+    // Show feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Logged ${recipe.title} to your daily meals! 🥗'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Use the detailed recipe if available, otherwise use the passed recipe
     final recipe = _detailedRecipe ?? widget.recipe;
+    final warnings = OnboardingController().getHealthWarningsForIngredients(recipe.ingredients);
+
     // Instructions are now handled in _fetchRecipeDetails (either API, AI, or fallback)
     // But we keep this check just in case
     final instructions = recipe.instructions.isNotEmpty 
@@ -176,11 +242,31 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   ),
                   actions: [
                      IconButton(
-                      icon: const CircleAvatar(
+                      icon: CircleAvatar(
                         backgroundColor: Colors.white,
-                        child: Icon(Icons.favorite_border, color: AppColors.primary),
+                        child: Icon(
+                          _favoritesController.isFavorite(recipe.id) ? Icons.favorite : Icons.favorite_border,
+                          color: AppColors.primary
+                        ),
                       ),
-                      onPressed: () {},
+                      onPressed: () async {
+                        await _favoritesController.toggleFavorite(recipe);
+                        setState(() {});
+                        
+                        if (mounted) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                _favoritesController.isFavorite(recipe.id) 
+                                  ? 'Added to Favorites ❤️' 
+                                  : 'Removed from Favorites 💔'
+                              ),
+                              duration: const Duration(seconds: 1),
+                              backgroundColor: AppColors.primary,
+                            ),
+                          );
+                        }
+                      },
                     ),
                      const SizedBox(width: 16),
                   ],
@@ -248,6 +334,57 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                     style: TextStyle(color: Colors.orange[700], fontSize: 12),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+
+                        // Health Warnings
+                        if (warnings.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red[100]!),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Health Alert',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ...warnings.map((w) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4.0),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Padding(
+                                        padding: EdgeInsets.only(top: 6.0),
+                                        child: Icon(Icons.circle, size: 6, color: Colors.red),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          w,
+                                          style: const TextStyle(color: Colors.red, fontSize: 13),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )).toList(),
                               ],
                             ),
                           ),
@@ -458,28 +595,47 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
                          const SizedBox(height: 8),
 
-                         // Start Cooking Button
-                         ElevatedButton(
-                           onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CookingScreen(recipe: recipe),
-                                ),
-                              );
-                           },
-                           style: ElevatedButton.styleFrom(
-                             padding: const EdgeInsets.symmetric(vertical: 16),
-                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                           ),
-                           child: const Row(
-                             mainAxisAlignment: MainAxisAlignment.center,
-                             children: [
-                               Icon(Icons.play_arrow),
-                               SizedBox(width: 8),
-                               Text('Start Cooking Assistant'),
-                             ],
-                           ),
+                         // Action Buttons
+                         Row(
+                           children: [
+                             Expanded(
+                               flex: 2,
+                               child: OutlinedButton.icon(
+                                 onPressed: _logMeal,
+                                 icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                                 label: const Text(
+                                   'Log Meal', 
+                                   style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                 ),
+                                 style: OutlinedButton.styleFrom(
+                                   padding: const EdgeInsets.symmetric(vertical: 16),
+                                   side: const BorderSide(color: AppColors.primary, width: 2),
+                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                 ),
+                               ),
+                             ),
+                             const SizedBox(width: 12),
+                             Expanded(
+                               flex: 3,
+                               child: ElevatedButton.icon(
+                                 onPressed: () {
+                                     Navigator.push(
+                                       context,
+                                       MaterialPageRoute(
+                                         builder: (context) => CookingScreen(recipe: recipe),
+                                       ),
+                                     );
+                                 },
+                                 icon: const Icon(Icons.play_arrow, color: Colors.white),
+                                 label: const Text('Start Cooking', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                 style: ElevatedButton.styleFrom(
+                                   backgroundColor: AppColors.primary,
+                                   padding: const EdgeInsets.symmetric(vertical: 16),
+                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                 ),
+                               ),
+                             ),
+                           ],
                          ),
                          const SizedBox(height: 20),
                       ],
