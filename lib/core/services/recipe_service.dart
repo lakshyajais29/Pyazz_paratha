@@ -76,24 +76,29 @@ class RecipeService {
     return null;
   }
 
-  // Fetch individual recipe by ID with full details
-  Future<Recipe?> getRecipeById(String recipeId) async {
-    final url = '$_baseUrl/recipeinfo/$recipeId';
+  // Fetch detailed recipe by title
+  Future<Recipe?> getRecipeByTitle(String title) async {
     try {
-      final response = await http.get(Uri.parse(url), headers: {'x-api-key': _apiKey});
+      final encodedTitle = Uri.encodeComponent(title);
+      final url = 'http://cosylab.iiitd.edu.in/recipe2-api/recipe-bytitle/recipeByTitle?title=$encodedTitle';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'x-api-key': _apiKey},
+      );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final success = data['success'];
         final isSuccess = success == true || success.toString() == 'true';
-        
-        if (isSuccess && data['payload'] != null) {
-          // Handle both direct payload and payload.data structures
-          final recipeData = data['payload']['data'] ?? data['payload'];
-          return Recipe.fromApiJson(recipeData);
+
+        if (isSuccess && data['data'] != null && data['data'] is List && (data['data'] as List).isNotEmpty) {
+          // The API returns an array, take the first match
+          return Recipe.fromApiJson(data['data'][0]);
         }
       }
     } catch (e) {
-      // debugPrint('Error fetching recipe by ID: $e');
+      // debugPrint('Error fetching recipe by title: $e');
     }
     return null;
   }
