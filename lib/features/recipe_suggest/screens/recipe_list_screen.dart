@@ -1,15 +1,41 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/recipe_model.dart';
+import '../../../core/services/recipe_service.dart';
 import 'recipe_detail_screen.dart';
 
-class RecipeListScreen extends StatelessWidget {
+class RecipeListScreen extends StatefulWidget {
   const RecipeListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final recipes = Recipe.dummyRecipes;
+  State<RecipeListScreen> createState() => _RecipeListScreenState();
+}
 
+class _RecipeListScreenState extends State<RecipeListScreen> {
+  final RecipeService _recipeService = RecipeService();
+  List<Recipe> _recipes = [];
+  bool _isLoading = true;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecipes();
+  }
+
+  Future<void> _fetchRecipes() async {
+    setState(() => _isLoading = true);
+    final recipes = await _recipeService.getRecipes(page: 1, limit: 20); // Fetch more for scrolling
+    if (mounted) {
+      setState(() {
+        _recipes = recipes;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -22,8 +48,8 @@ class RecipeListScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list, color: AppColors.primary),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh, color: AppColors.primary),
+            onPressed: _fetchRecipes,
           ),
         ],
       ),
@@ -72,9 +98,9 @@ class RecipeListScreen extends StatelessWidget {
             // Recipe List
             Expanded(
               child: ListView.builder(
-                itemCount: recipes.length,
+                itemCount: _recipes.length,
                 itemBuilder: (context, index) {
-                  final recipe = recipes[index];
+                  final recipe = _recipes[index];
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -109,31 +135,42 @@ class RecipeListScreen extends StatelessWidget {
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  Image.network(
-                                    recipe.imageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        color: Colors.grey[200],
-                                        child: Icon(Icons.restaurant, size: 50, color: Colors.grey[400]),
-                                      );
-                                    },
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        color: Colors.grey[200],
-                                        child: Center(
-                                          child: CircularProgressIndicator(
-                                            value: loadingProgress.expectedTotalBytes != null
-                                                ? loadingProgress.cumulativeBytesLoaded /
-                                                    loadingProgress.expectedTotalBytes!
-                                                : null,
-                                            color: AppColors.primary,
-                                          ),
+                                    recipe.imageUrl.startsWith('http')
+                                      ? Image.network(
+                                          recipe.imageUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              color: Colors.grey[200],
+                                              child: Icon(Icons.restaurant, size: 50, color: Colors.grey[400]),
+                                            );
+                                          },
+                                          loadingBuilder: (context, child, loadingProgress) {
+                                            if (loadingProgress == null) return child;
+                                            return Container(
+                                              color: Colors.grey[200],
+                                              child: Center(
+                                                child: CircularProgressIndicator(
+                                                  value: loadingProgress.expectedTotalBytes != null
+                                                      ? loadingProgress.cumulativeBytesLoaded /
+                                                          loadingProgress.expectedTotalBytes!
+                                                      : null,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Image.asset(
+                                          recipe.imageUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              color: Colors.grey[200],
+                                              child: Icon(Icons.broken_image, size: 50, color: Colors.grey[400]),
+                                            );
+                                          },
                                         ),
-                                      );
-                                    },
-                                  ),
                                   Positioned(
                                     top: 10,
                                     right: 10,

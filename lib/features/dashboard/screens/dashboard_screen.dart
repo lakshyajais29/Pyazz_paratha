@@ -20,6 +20,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final DashboardController _controller = DashboardController();
   int _selectedIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecipe();
+  }
+
+  Future<void> _fetchRecipe() async {
+    await _controller.fetchDailyRecipe();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -357,13 +370,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: Image.asset(
-                                _controller.nextMeal.imageUrl,
-                                width: 80,
-                                height: 80,
-                                fit: BoxFit.cover,
-                                errorBuilder: (c, o, s) => Container(width:80, height:80, color:Colors.grey[200]),
-                              ),
+                              child: _controller.nextMeal.imageUrl.startsWith('http')
+                                  ? Image.network(
+                                      _controller.nextMeal.imageUrl,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (c, o, s) => Container(width: 80, height: 80, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+                                    )
+                                  : Image.asset(
+                                      _controller.nextMeal.imageUrl,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (c, o, s) => Container(width: 80, height: 80, color: Colors.grey[200]),
+                                    ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(

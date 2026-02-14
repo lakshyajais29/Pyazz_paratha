@@ -1,18 +1,53 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/recipe_model.dart';
+import '../../../core/services/recipe_service.dart';
 import '../../cooking_assistant/screens/cooking_screen.dart'; // Navigate to Cooking
 
-class RecipeDetailScreen extends StatelessWidget {
+class RecipeDetailScreen extends StatefulWidget {
   final Recipe recipe;
 
   const RecipeDetailScreen({super.key, required this.recipe});
 
   @override
+  State<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
+}
+
+class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
+  final RecipeService _recipeService = RecipeService();
+  Recipe? _fullRecipe;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFullRecipeDetails();
+  }
+
+  Future<void> _fetchFullRecipeDetails() async {
+    setState(() => _isLoading = true);
+    
+    // Try to fetch full recipe details by ID
+    final fullRecipe = await _recipeService.getRecipeById(widget.recipe.id);
+    
+    if (mounted) {
+      setState(() {
+        // Use fetched recipe if available, otherwise use the passed recipe
+        _fullRecipe = fullRecipe ?? widget.recipe;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Use the full recipe if loaded, otherwise use the initial recipe
+    final recipe = _fullRecipe ?? widget.recipe;
     return Scaffold(
       backgroundColor: Colors.white,
-      body: CustomScrollView(
+      body: Stack(
+        children: [
+          CustomScrollView(
         slivers: [
           // Collapsible App Bar with Image
           SliverAppBar(
@@ -202,6 +237,18 @@ class RecipeDetailScreen extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+          // Loading overlay
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -16,13 +16,13 @@ class WelcomeScreen extends StatelessWidget {
               color: Colors.grey[300], // Placeholder color
               // In real app, create assets/images/kitchen_bg.jpg
               child: Image.asset(
-                'assets/images/food/kitchen_bg.jpg', // Placeholder path
+                'assets/images/onbimag.png',
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: const Color(0xFF5A7065), // Muted green from mockup
+                    color: const Color(0xFF5A7065),
                     child: const Center(
-                      child: Icon(Icons.kitchen, size: 100, color: Colors.white54),
+                      child: Text('Add onbimag.png to assets/images', style: TextStyle(color: Colors.white)),
                     ),
                   );
                 },

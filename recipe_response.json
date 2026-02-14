@@ -1,0 +1,33 @@
+{
+  "success": "true",
+  "message": "Recipe fetched successfully.",
+  "payload": {
+    "data": {
+      "recipe_id": 146978,
+      "calories": 127.3,
+      "cook_time": "0",
+      "prep_time": "0",
+      "servings": "4",
+      "recipe_title": "Breakfast Frittata",
+      "total_time": "33",
+      "url": "http://www.geniuskitchen.com/recipe/breakfast-frittata-17489",
+      "region": "Canadian",
+      "sub_region": "Canadian",
+      "continent": "North American",
+      "source": "Geniuskitchen",
+      "img_url": "https://img.sndimg.com/food/image/upload/w_555,h_416,c_fit,fl_progressive,q_95/v1/img/recipes/17/48/9/picwtLreG.jpg",
+      "carbohydrate, by difference (g)": 61.539,
+      "energy (kcal)": 543.6347,
+      "protein (g)": 28.9992,
+      "total lipid (fat) (g)": 21.9718,
+      "processes": "heat||add||add||cook||add||pour||cover||cook||place||heat||cook||serve",
+      "vegan": "0.0",
+      "pescetarian": "0.0",
+      "ovo_vegetarian": "0.0",
+      "lacto_vegetarian": "0.0",
+      "ovo_lacto_vegetarian": "0.0",
+      "utensils": "skillet||bowl||skillet||pan||plate",
+      "calorie_partition": "p1"
+    }
+  }
+}

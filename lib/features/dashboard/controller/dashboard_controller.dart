@@ -1,4 +1,5 @@
 import '../../../core/models/recipe_model.dart';
+import '../../../core/services/recipe_service.dart';
 
 class DashboardController {
   // Singleton pattern
@@ -29,7 +30,7 @@ class DashboardController {
     id: 'suggested_1',
     title: 'Grilled Salmon Bowl',
     description: 'A perfect balance of protein and healthy fats for your lunch.',
-    imageUrl: 'assets/images/food/salmon_bowl.png', // Local asset or network
+    imageUrl: 'assets/images/food/salmon.jpg',
     cookingTimeMinutes: 25,
     calories: 450,
     macros: {'protein': 35, 'carbs': 40, 'fat': 18},
@@ -40,6 +41,29 @@ class DashboardController {
 
   double get calorieProgress => caloriesConsumed / dailyCalorieGoal;
   int get caloriesRemaining => dailyCalorieGoal - caloriesConsumed;
+
+  // API Integration
+  DateTime? _lastFetchTime;
+  
+  Future<void> fetchDailyRecipe() async {
+    // Cache: Don't fetch if already fetched today (e.g., within 12 hours)
+    if (_lastFetchTime != null && DateTime.now().difference(_lastFetchTime!) < const Duration(hours: 12)) {
+      return;
+    }
+
+    try {
+      final service = RecipeService();
+      // Use the smarter endpoint for better recommendation
+      final recipe = await service.getSmartRecipe(); 
+      if (recipe != null) {
+        nextMeal = recipe;
+        _lastFetchTime = DateTime.now();
+        // Notify listeners/UI - since we using setState in Dashboard, we might need a callback or handle in UI
+      }
+    } catch (e) {
+      // debugPrint('Error fetching daily recipe: $e');
+    }
+  }
 
   void logMeal(int calories, int protein, int carbs, int fat) {
     caloriesConsumed += calories;
