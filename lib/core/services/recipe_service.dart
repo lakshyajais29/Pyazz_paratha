@@ -29,21 +29,30 @@ class RecipeService {
   }
 
   // Fetch smart recipe (Recipe of Day with filters)
-  // This seems to be a better version of "Recipe of the Day"
   Future<Recipe?> getSmartRecipe() async {
-    // Hardcoded filters as per user example, can be parameterized later
     const url = '$_baseUrl/recipe-day/with-ingredients-categories?excludeIngredients=water,flour&excludeCategories=Dairy';
     try {
       final response = await http.get(Uri.parse(url), headers: {'x-api-key': _apiKey});
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // Robust check
         final success = data['success'];
         final isSuccess = success == true || success.toString() == 'true';
 
         if (isSuccess && data['payload'] != null) {
-           // Direct payload has recipe data in this endpoint
-           return Recipe.fromApiJson(data['payload']);
+          final payload = data['payload'];
+          // payload can be: { data: [...] } (array) or a single recipe object
+          if (payload['data'] != null) {
+            final payloadData = payload['data'];
+            if (payloadData is List && payloadData.isNotEmpty) {
+              return Recipe.fromApiJson(payloadData[0]);
+            } else if (payloadData is Map<String, dynamic>) {
+              return Recipe.fromApiJson(payloadData);
+            }
+          }
+          // If payload itself is the recipe
+          if (payload is Map<String, dynamic> && payload.containsKey('recipe_title')) {
+            return Recipe.fromApiJson(payload);
+          }
         }
       }
     } catch (e) {
@@ -53,8 +62,6 @@ class RecipeService {
   }
 
   Future<Recipe?> fetchRecipeOfTheDay() async {
-    // Keeping this as a fallback or simpler version
-    // ... logic remains ...
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/recipeofday'),
@@ -66,12 +73,20 @@ class RecipeService {
         final success = data['success'];
         final isSuccess = success == true || success.toString() == 'true';
 
-        if (isSuccess && data['payload'] != null && data['payload']['data'] != null) {
-          return Recipe.fromApiJson(data['payload']['data']);
+        if (isSuccess && data['payload'] != null) {
+          final payload = data['payload'];
+          if (payload['data'] != null) {
+            final payloadData = payload['data'];
+            if (payloadData is List && payloadData.isNotEmpty) {
+              return Recipe.fromApiJson(payloadData[0]);
+            } else if (payloadData is Map<String, dynamic>) {
+              return Recipe.fromApiJson(payloadData);
+            }
+          }
         }
       } 
     } catch (e) {
-       // ...
+       // debugPrint('Error fetching recipe of day: $e');
     }
     return null;
   }

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/recipe_model.dart';
 import '../../../core/services/recipe_service.dart';
+import '../../../core/services/recipedb_service.dart';
 import 'recipe_detail_screen.dart';
 
 class RecipeListScreen extends StatefulWidget {
-  const RecipeListScreen({super.key});
+  final String? moodFilter;
+  const RecipeListScreen({super.key, this.moodFilter});
 
   @override
   State<RecipeListScreen> createState() => _RecipeListScreenState();
@@ -13,9 +15,12 @@ class RecipeListScreen extends StatefulWidget {
 
 class _RecipeListScreenState extends State<RecipeListScreen> {
   final RecipeService _recipeService = RecipeService();
+  final RecipeDbService _recipeDbService = RecipeDbService();
+  final TextEditingController _searchController = TextEditingController();
   List<Recipe> _recipes = [];
+  List<Recipe> _allRecipes = []; // Full list for local filtering
   bool _isLoading = true;
-  final ScrollController _scrollController = ScrollController();
+  bool _isSearching = false;
 
   @override
   void initState() {
@@ -23,13 +28,50 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
     _fetchRecipes();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchRecipes() async {
     setState(() => _isLoading = true);
-    final recipes = await _recipeService.getRecipes(page: 1, limit: 20); // Fetch more for scrolling
+    List<Recipe> recipes;
+    if (widget.moodFilter != null && widget.moodFilter!.isNotEmpty) {
+      recipes = await _recipeDbService.getRecipesByRegion(widget.moodFilter!, limit: 20);
+      if (recipes.isEmpty) {
+        recipes = await _recipeService.getRecipes(page: 1, limit: 20);
+      }
+    } else {
+      recipes = await _recipeService.getRecipes(page: 1, limit: 20);
+    }
     if (mounted) {
       setState(() {
         _recipes = recipes;
+        _allRecipes = recipes;
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _searchRecipes(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _recipes = _allRecipes;
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    // Search by title using the working recipeByTitle API endpoint
+    final apiResults = await _recipeDbService.searchRecipesByTitle(query.trim(), limit: 20);
+    
+    if (mounted) {
+      setState(() { 
+        _recipes = apiResults; 
+        _isSearching = false; 
       });
     }
   }
@@ -49,7 +91,10 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.primary),
-            onPressed: _fetchRecipes,
+            onPressed: () {
+              _searchController.clear();
+              _fetchRecipes();
+            },
           ),
         ],
       ),
@@ -71,12 +116,25 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
                   ),
                 ],
               ),
-              child: const TextField(
+              child: TextField(
+                controller: _searchController,
+                onSubmitted: _searchRecipes,
+                textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   border: InputBorder.none,
-                  hintText: 'Search ingredients, moods...',
-                  icon: Icon(Icons.search, color: Colors.grey),
+                  hintText: 'Search recipes by ingredient...',
+                  icon: const Icon(Icons.search, color: Colors.grey),
+                  suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          _searchRecipes('');
+                        },
+                      )
+                    : null,
                 ),
+                onChanged: (val) => setState(() {}), // Rebuild for clear icon
               ),
             ),
             const SizedBox(height: 20),
@@ -97,10 +155,31 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
 
             // Recipe List
             Expanded(
-              child: ListView.builder(
-                itemCount: _recipes.length,
-                itemBuilder: (context, index) {
-                  final recipe = _recipes[index];
+              child: _isLoading || _isSearching
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : _recipes.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No recipes found',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[400]),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try a different search term or ingredient',
+                            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+              itemCount: _recipes.length,
+              itemBuilder: (context, index) {
+                final recipe = _recipes[index];
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(

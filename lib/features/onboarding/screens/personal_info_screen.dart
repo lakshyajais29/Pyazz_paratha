@@ -12,6 +12,7 @@ class PersonalInfoScreen extends StatefulWidget {
 
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   final OnboardingController _controller = OnboardingController();
+  final TextEditingController _nameController = TextEditingController();
   
   // Local state for UI updates
   int _selectedAge = 24;
@@ -23,10 +24,17 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   void initState() {
     super.initState();
     // Initialize from controller
+    _nameController.text = _controller.name;
     _selectedAge = _controller.age;
     _weight = _controller.weight;
     _height = _controller.height;
     _selectedGender = _controller.gender;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
   }
 
   @override
@@ -75,6 +83,38 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 style: TextStyle(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 30),
+
+              // Name Input
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _nameController,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Your Name',
+                    hintStyle: TextStyle(color: Colors.grey, fontWeight: FontWeight.normal),
+                    border: InputBorder.none,
+                    prefixIcon: Icon(Icons.person_outline, color: AppColors.primary),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
 
               // Gender Selection
               Row(
@@ -160,6 +200,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               ElevatedButton(
                 onPressed: () {
                   // Save data to controller
+                  _controller.updateName(_nameController.text.trim());
                   _controller.updateAge(_selectedAge);
                   _controller.updateWeight(_weight);
                   _controller.updateHeight(_height);

@@ -1,77 +1,101 @@
-import '../../../core/models/recipe_model.dart';
 import '../../../core/services/recipe_service.dart';
+import '../../../core/models/recipe_model.dart';
+import '../../../core/models/nutrition_model.dart';
+import '../../onboarding/controller/onboarding_controller.dart';
+import '../../../shared/utils/bmr_calculator.dart';
 
 class DashboardController {
-  // Singleton pattern
+  // Singleton
   static final DashboardController _instance = DashboardController._internal();
   factory DashboardController() => _instance;
   DashboardController._internal();
 
-  // Mock Data
-  final int dailyCalorieGoal = 2200;
-  int caloriesConsumed = 750;
-  
-  // Macros (Current / Goal)
-  final double proteinCurrent = 45;
-  final double proteinGoal = 140;
-  
-  final double carbsCurrent = 90;
-  final double carbsGoal = 250;
-  
-  final double fatCurrent = 30;
-  final double fatGoal = 70;
+  final RecipeService _recipeService = RecipeService();
+  final OnboardingController _onboarding = OnboardingController();
 
-  // Hydration
-  double waterIntakeLiters = 1.2;
-  final double waterGoalLiters = 3.0;
+  // Logged meals for the day
+  final List<LoggedMeal> _loggedMeals = [];
 
-  // Next Meal Suggestion
-  Recipe nextMeal = Recipe(
-    id: 'suggested_1',
-    title: 'Grilled Salmon Bowl',
-    description: 'A perfect balance of protein and healthy fats for your lunch.',
-    imageUrl: 'assets/images/food/salmon.jpg',
-    cookingTimeMinutes: 25,
-    calories: 450,
-    macros: {'protein': 35, 'carbs': 40, 'fat': 18},
-    ingredients: ['Salmon Fillet', 'Brown Rice', 'Avocado', 'Cucumber', 'Sesame Seeds'],
-    instructions: ['Grill the salmon.', 'Cook the rice.', 'Assemble the bowl.', 'Top with sesame seeds.'],
-    rating: 4.8,
+  // --- User Info (from onboarding, no more hardcoded) ---
+  String get userName => _onboarding.name.isNotEmpty ? _onboarding.name : 'User';
+  String get userGoal => _onboarding.goal;
+
+  // --- Calorie / Macro Goals (calculated from user data) ---
+  double get bmr => BmrCalculator.calculateBMR(
+    weightKg: _onboarding.weight,
+    heightCm: _onboarding.height,
+    age: _onboarding.age,
+    gender: _onboarding.gender,
   );
 
-  double get calorieProgress => caloriesConsumed / dailyCalorieGoal;
-  int get caloriesRemaining => dailyCalorieGoal - caloriesConsumed;
+  double get calorieGoal => BmrCalculator.dailyCalorieTarget(bmr: bmr, goal: _onboarding.goal);
 
-  // API Integration
-  DateTime? _lastFetchTime;
-  
+  Map<String, double> get macroGoals => BmrCalculator.recommendedMacros(
+    dailyCalories: calorieGoal,
+    goal: _onboarding.goal,
+  );
+
+  // --- Today's Consumed (from logged meals, dynamic) ---
+  int get caloriesConsumed => _loggedMeals.fold(0, (sum, m) => sum + m.nutrition.calories);
+  double get proteinCurrent => _loggedMeals.fold(0.0, (sum, m) => sum + m.nutrition.protein);
+  double get carbsCurrent => _loggedMeals.fold(0.0, (sum, m) => sum + m.nutrition.carbs);
+  double get fatCurrent => _loggedMeals.fold(0.0, (sum, m) => sum + m.nutrition.fat);
+
+  // --- Goals (from calculated) ---
+  double get proteinGoal => macroGoals['protein'] ?? 100;
+  double get carbsGoal => macroGoals['carbs'] ?? 200;
+  double get fatGoal => macroGoals['fat'] ?? 60;
+
+  // --- Screen compatibility getters ---
+  int get caloriesRemaining => (calorieGoal - caloriesConsumed).clamp(0, calorieGoal.toInt()).toInt();
+  double get calorieProgress => calorieGoal > 0 ? (caloriesConsumed / calorieGoal).clamp(0.0, 1.0) : 0.0;
+
+  // Water tracking (user manually tracks)
+  double waterConsumed = 0; // liters
+  double get waterGoal => _onboarding.weight * 0.033; // 33ml per kg
+
+  // Meals logged count
+  int get mealsLogged => _loggedMeals.length;
+
+  // Next Meal (from API) — non-nullable with fallback
+  Recipe nextMeal = Recipe(
+    id: '0',
+    title: 'Loading...',
+    description: 'Fetching your recommendation',
+    imageUrl: 'assets/images/food/salmon.jpg',
+    cookingTimeMinutes: 0,
+    calories: 0,
+    ingredients: [],
+    instructions: [],
+  );
+
+  // --- Actions ---
   Future<void> fetchDailyRecipe() async {
-    // Cache: Don't fetch if already fetched today (e.g., within 12 hours)
-    if (_lastFetchTime != null && DateTime.now().difference(_lastFetchTime!) < const Duration(hours: 12)) {
+    final recipe = await _recipeService.getSmartRecipe();
+    if (recipe != null) {
+      nextMeal = recipe;
       return;
     }
-
-    try {
-      final service = RecipeService();
-      // Use the smarter endpoint for better recommendation
-      final recipe = await service.getSmartRecipe(); 
-      if (recipe != null) {
-        nextMeal = recipe;
-        _lastFetchTime = DateTime.now();
-        // Notify listeners/UI - since we using setState in Dashboard, we might need a callback or handle in UI
-      }
-    } catch (e) {
-      // debugPrint('Error fetching daily recipe: $e');
+    // Fallback to recipe of the day
+    final fallback = await _recipeService.fetchRecipeOfTheDay();
+    if (fallback != null) {
+      nextMeal = fallback;
     }
   }
 
-  void logMeal(int calories, int protein, int carbs, int fat) {
-    caloriesConsumed += calories;
-    // Simulate macro updates
-    // proteinCurrent += protein; 
-    // carbsCurrent += carbs;
-    // fatCurrent += fat;
-    
-    // Notify listeners if using Provider/GetX, here relying on setState in Dashboard
+  /// Alias for backward compat
+  Future<void> fetchNextMeal() async => fetchDailyRecipe();
+
+  void logMeal(NutritionInfo nutrition) {
+    _loggedMeals.add(LoggedMeal(
+      nutrition: nutrition,
+      timestamp: DateTime.now(),
+    ));
   }
+
+  void addWater(double liters) {
+    waterConsumed += liters;
+  }
+
+  List<LoggedMeal> get todaysMeals => _loggedMeals;
 }

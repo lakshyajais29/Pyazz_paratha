@@ -9,6 +9,9 @@ class Recipe {
   final List<String> ingredients;
   final List<String> instructions;
   final double rating;
+  final String region;
+  final String subRegion;
+  final String sourceUrl;
 
   Recipe({
     required this.id,
@@ -21,6 +24,9 @@ class Recipe {
     required this.instructions,
     this.macros = const {'protein': 0, 'carbs': 0, 'fat': 0},
     this.rating = 4.5,
+    this.region = '',
+    this.subRegion = '',
+    this.sourceUrl = '',
   });
 
   factory Recipe.fromApiJson(Map<String, dynamic> json) {
@@ -28,190 +34,150 @@ class Recipe {
     double toDouble(dynamic val) {
       if (val == null) return 0.0;
       if (val is num) return val.toDouble();
-      if (val is String) {
-        // Remove non-numeric chars if needed, but usually just parsing works
-        return double.tryParse(val) ?? 0.0;
-      }
+      if (val is String) return double.tryParse(val) ?? 0.0;
       return 0.0;
     }
 
     int toInt(dynamic val) {
       if (val == null) return 0;
       if (val is num) return val.toInt();
-      if (val is String) {
-        return double.tryParse(val)?.toInt() ?? 0;
-      }
+      if (val is String) return double.tryParse(val)?.toInt() ?? 0;
       return 0;
     }
     
-    // Extract macros using multiple possible keys (API inconsistency handling)
-    final calories = toInt(json['Calories'] ?? json['energy (kcal)'] ?? json['Energy (kcal)']);
+    // Extract calories — handle both upper/lowercase keys from different endpoints
+    final calories = toInt(json['Calories'] ?? json['calories'] ?? json['energy (kcal)'] ?? json['Energy (kcal)']);
+    final energyKcal = toDouble(json['Energy (kcal)'] ?? json['energy (kcal)'] ?? 0);
     final protein = toDouble(json['ProteinContent'] ?? json['protein (g)'] ?? json['Protein (g)']);
     final carbs = toDouble(json['CarbohydrateContent'] ?? json['carbohydrate, by difference (g)'] ?? json['Carbohydrate, by difference (g)']);
     final fat = toDouble(json['FatContent'] ?? json['total lipid (fat) (g)'] ?? json['Total lipid (fat) (g)']);
 
-    // Extract image
+    // Extract image — both endpoints provide img_url
     String img = '';
     if (json['img_url'] != null) {
-      final possibleImg = json['img_url'] as String;
-      if (possibleImg.startsWith('http')) {
+      final possibleImg = json['img_url'].toString();
+      if (possibleImg.startsWith('http') && 
+          !possibleImg.contains('gk-shareGraphic') &&
+          !possibleImg.contains('gk/img/gk-share')) {
         img = possibleImg;
       }
     }
     
-    // Fallback if no image (common in new API)
+    // Use a placeholder image URL for recipes without proper food images
     if (img.isEmpty) {
+      // Use a deterministic food placeholder based on recipe id
       final idVal = int.tryParse((json['Recipe_id'] ?? json['recipe_id'] ?? '0').toString()) ?? 0;
-      final stockImages = [
-        'assets/images/food/salmon.jpg',
-        'assets/images/food/avoctoast.jpg',
-        'assets/images/food/berry.jpg',
-        'assets/images/food/quinoa.jpg',
-      ];
-      img = stockImages[idVal % stockImages.length];
+      final foodCategories = ['salad', 'pasta', 'soup', 'curry', 'steak', 'cake', 'rice', 'bread'];
+      final category = foodCategories[idVal % foodCategories.length];
+      img = 'https://img.sndimg.com/food/image/upload/w_555,h_416,c_fit,q_80/v1/img/recipes/no-image/$category.jpg';
     }
 
-    // Parse ingredients
-    // Endpoint 1 (recipesinfo): No standard ingredients list, has "Utensils"?
-    // Endpoint 2 (smart): "ingredients": [{"name": "onion"}, ...]
+    // Region info (case-insensitive extraction)
+    final region = (json['Region'] ?? json['region'] ?? '').toString();
+    final subRegion = (json['Sub_region'] ?? json['sub_region'] ?? '').toString();
+
+    // Parse Processes (the API provides cooking process verbs separated by ||)
+    // Convert verb list into proper instruction steps
+    List<String> instructions = [];
+    final rawProcesses = json['Processes'] ?? json['processes'];
+    if (rawProcesses != null && rawProcesses is String && rawProcesses.isNotEmpty) {
+      final steps = rawProcesses.split('||').where((s) => s.trim().isNotEmpty).toList();
+      // Capitalize and number the steps for better display
+      for (int i = 0; i < steps.length; i++) {
+        final step = steps[i].trim();
+        final capitalized = step[0].toUpperCase() + step.substring(1);
+        instructions.add(capitalized);
+      }
+    }
+    // Fallback for other instruction formats
+    if (instructions.isEmpty) {
+      final rawInstructions = json['instructions'] ?? json['RecipeInstructions'];
+      if (rawInstructions != null) {
+        if (rawInstructions is List) {
+          instructions = List<String>.from(rawInstructions);
+        } else if (rawInstructions is String) {
+          instructions = rawInstructions.split('.').where((s) => s.trim().isNotEmpty).map((s) => s.trim()).toList();
+        }
+      }
+    }
+    if (instructions.isEmpty) {
+      instructions = ['Follow the recipe from the source link.'];
+    }
+
+    // Parse utensils (this is what the API provides as "equipment needed")
+    List<String> utensils = [];
+    final rawUtensils = json['utensils'] ?? json['Utensils'];
+    if (rawUtensils != null && rawUtensils is String && rawUtensils.isNotEmpty) {
+      utensils = rawUtensils.split('||').where((s) => s.trim().isNotEmpty).map((s) {
+        final trimmed = s.trim();
+        return trimmed[0].toUpperCase() + trimmed.substring(1);
+      }).toList();
+    }
+
+    // Parse ingredients — check multiple possible formats from different endpoints
     List<String> ingredients = []; 
     if (json['ingredients'] != null && json['ingredients'] is List) {
       ingredients = (json['ingredients'] as List)
-          .map((e) => e['name'].toString())
+          .map((e) => e is Map ? (e['name'] ?? e.toString()).toString() : e.toString())
           .toList();
     } else if (json['RecipeIngredientParts'] != null) {
        ingredients = List<String>.from(json['RecipeIngredientParts']);
-    }
-
-    // Parse instructions
-    List<String> instructions = [];
-    final rawProcesses = json['Processes'] ?? json['processes'];
-    final rawInstructions = json['instructions'] ?? json['RecipeInstructions'];
-
-    if (rawProcesses != null && rawProcesses is String) {
-      // Pipe separated logic
-      instructions = rawProcesses.split('||');
-    } else if (rawInstructions != null) {
-      if (rawInstructions is List) {
-        instructions = List<String>.from(rawInstructions);
-      } else if (rawInstructions is String) {
-        // Sentence based? Split by period?
-        instructions = rawInstructions.split('.').where((s) => s.trim().isNotEmpty).toList();
+    } else if (json['ingredient_phrase'] != null) {
+      // Smart recipe endpoint provides ingredient phrases
+      final phrase = json['ingredient_phrase'].toString();
+      if (phrase.isNotEmpty) {
+        ingredients = [phrase];
+      }
+      // Also add the generic ingredient name if available
+      if (json['ingredient'] != null) {
+        final generic = json['ingredient'].toString();
+        if (generic.isNotEmpty && !ingredients.any((i) => i.toLowerCase().contains(generic.toLowerCase()))) {
+          ingredients.add(generic);
+        }
       }
     }
+    
+    // If no ingredients, use utensils as "Equipment Needed"
+    if (ingredients.isEmpty && utensils.isNotEmpty) {
+      ingredients = utensils;
+    }
+    // Absolute fallback
+    if (ingredients.isEmpty) {
+      ingredients = ['See original recipe for full ingredients list'];
+    }
+
+    // Build description
+    String description = '';
+    if (region.isNotEmpty) {
+      description = '$region${subRegion.isNotEmpty && subRegion != region ? ' • $subRegion' : ''} Cuisine';
+    }
+    if (description.isEmpty) {
+      description = json['Description'] ?? json['description'] ?? 'A delicious recipe';
+    }
+
+    // Title (handle both upper/lowercase)
+    final title = (json['Recipe_title'] ?? json['recipe_title'] ?? json['Name'] ?? json['name'] ?? 'Untitled Recipe').toString();
+    // Clean title — remove excess quotes
+    final cleanTitle = title.replaceAll(RegExp(r'^["\s]+|["\s]+$'), '');
 
     return Recipe(
       id: (json['Recipe_id'] ?? json['recipe_id'] ?? json['_id'] ?? '0').toString(),
-      title: json['Recipe_title'] ?? json['recipe_title'] ?? json['Name'] ?? 'Delicious Recipe',
-      description: json['Region'] != null ? '${json['Region']} - ${json['Sub_region']} Cuisine' : 'A delicious meal for you.',
+      title: cleanTitle.isNotEmpty ? cleanTitle : 'Untitled Recipe',
+      description: description,
       imageUrl: img,
       cookingTimeMinutes: toInt(json['total_time'] ?? json['TotalTime'] ?? json['cook_time']), 
-      calories: calories,
+      calories: energyKcal > 0 ? energyKcal.toInt() : calories,
       macros: {
         'protein': protein,
         'carbs': carbs,
         'fat': fat,
       },
-      ingredients: ingredients.isNotEmpty ? ingredients : ['Fresh Ingredients'],
-      instructions: instructions.isNotEmpty ? instructions : ['Prepare ingredients.', 'Cook with love.', 'Enjoy!'], 
-      rating: 4.5, // Default rating as API doesn't seem to have it
+      ingredients: ingredients,
+      instructions: instructions,
+      rating: 4.5,
+      region: region,
+      subRegion: subRegion,
+      sourceUrl: (json['url'] ?? '').toString(),
     );
   }
-
-  // Dummy Data
-  static List<Recipe> get dummyRecipes => [
-    Recipe(
-      id: '1',
-      title: 'Avocado Toast with Poached Egg',
-      description: 'A classic breakfast choice packed with healthy fats and protein.',
-      imageUrl: 'assets/images/food/avoctoast.jpg',
-      cookingTimeMinutes: 15,
-      calories: 350,
-      macros: {'protein': 12, 'carbs': 30, 'fat': 18},
-      ingredients: [
-        '2 slices Whole Wheat Bread',
-        '1 Ripe Avocado',
-        '2 Large Eggs',
-        '1 tsp Chili Flakes',
-        'Salt & Pepper to taste'
-      ],
-      instructions: [
-        'Toast the bread slices until golden brown.',
-        'Mash the avocado with salt and pepper.',
-        'Poach the eggs in simmering water for 3-4 minutes.',
-        'Spread avocado on toast and top with egg.',
-        'Sprinkle chili flakes and serve.'
-      ],
-    ),
-    Recipe(
-      id: '2',
-      title: 'Quinoa & Black Bean Salad',
-      description: 'Refreshing salad rich in fiber and antioxidants.',
-      imageUrl: 'assets/images/food/quinoa.jpg',
-      cookingTimeMinutes: 20,
-      calories: 420,
-      macros: {'protein': 15, 'carbs': 55, 'fat': 10},
-      ingredients: [
-        '1 cup Quinoa (cooked)',
-        '1/2 cup Black Beans',
-        '1 Red Bell Pepper (diced)',
-        '1/4 cup Corn',
-        'Lemon Vinaigrette'
-      ],
-      instructions: [
-        'Combine quinoa, beans, peppers, and corn in a large bowl.',
-        'Drizzle with vinaigrette and toss effectively.',
-        'Garnish with cilantro if desired.',
-        'Serve chilled or at room temperature.'
-      ],
-      rating: 4.8,
-    ),
-    Recipe(
-      id: '3',
-      title: 'Grilled Salmon with Asparagus',
-      description: 'Omega-3 rich dinner ready in under 30 minutes.',
-      imageUrl: 'assets/images/food/salmon.jpg',
-      cookingTimeMinutes: 25,
-      calories: 500,
-      macros: {'protein': 40, 'carbs': 5, 'fat': 25},
-      ingredients: [
-        '1 Salmon Fillet',
-        '1 bunch Asparagus',
-        '2 tbsp Olive Oil',
-        '1 Lemon (sliced)',
-        'Garlic Powder'
-      ],
-      instructions: [
-        'Preheat oven to 400°F (200°C).',
-        'Place salmon and asparagus on a baking sheet.',
-        'Drizzle with oil and season generously.',
-        'Bake for 12-15 minutes until salmon flakes easily.',
-        'Serve with lemon wedges.'
-      ],
-      rating: 4.9,
-    ),
-     Recipe(
-      id: '4',
-      title: 'Berry Smoothie Bowl',
-      description: 'Sweet and tangy start to your day.',
-      imageUrl: 'assets/images/food/berry.jpg',
-      cookingTimeMinutes: 5,
-      calories: 280,
-      macros: {'protein': 8, 'carbs': 45, 'fat': 6},
-      ingredients: [
-        '1 cup Mixed Frozen Berries',
-        '1 Banana',
-        '1/2 cup Almond Milk',
-        '1 tbsp Chia Seeds',
-        'Granola for topping'
-      ],
-      instructions: [
-        'Blend berries, banana, and milk until smooth.',
-        'Pour into a bowl.',
-        'Top with chia seeds and granola.',
-        'Enjoy immediately.'
-      ],
-      rating: 4.7,
-    ),
-  ];
 }

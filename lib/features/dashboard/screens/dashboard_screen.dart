@@ -126,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Rahul',
+                              _controller.userName,
                               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                                 color: AppColors.textPrimary,
                                 fontWeight: FontWeight.bold,

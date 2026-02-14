@@ -80,9 +80,9 @@ class ProfileScreen extends StatelessWidget {
                         end: Alignment.bottomRight,
                       ),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
-                        'R',
+                        controller.name.isNotEmpty ? controller.name[0].toUpperCase() : 'U',
                         style: TextStyle(
                           fontSize: 40,
                           fontWeight: FontWeight.bold,
@@ -105,9 +105,9 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 16),
               
               // Name & Details
-              const Text(
-                'Rahul',
-                style: TextStyle(
+              Text(
+                controller.name.isNotEmpty ? controller.name : 'User',
+                style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'DM Serif Display',

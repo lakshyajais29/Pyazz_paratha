@@ -216,10 +216,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
                                 child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.circle, size: 8, color: AppColors.primary),
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 6.0),
+                                      child: Icon(Icons.circle, size: 8, color: AppColors.primary),
+                                    ),
                                     const SizedBox(width: 12),
-                                    Expanded(child: Text(ingredient, style: const TextStyle(fontSize: 16))),
+                                    Expanded(child: Text(ingredient, style: const TextStyle(fontSize: 15, height: 1.4))),
                                   ],
                                 ),
                               )
@@ -229,22 +233,115 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
                          const SizedBox(height: 30),
 
-                         // Instructions Preview (Just first one)
-                         const Text(
-                          'Instructions',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'DM Serif Display',
-                          ),
-                        ),
-                         const SizedBox(height: 16),
-                         Text(
-                           recipe.instructions.join('\n\n'),
-                           style: const TextStyle(fontSize: 16, height: 1.5, color: AppColors.textSecondary),
-                         ),
+                         // Region & Cuisine Info
+                         if (recipe.region.isNotEmpty)
+                           Container(
+                             padding: const EdgeInsets.all(16),
+                             margin: const EdgeInsets.only(bottom: 24),
+                             decoration: BoxDecoration(
+                               color: Colors.orange[50],
+                               borderRadius: BorderRadius.circular(16),
+                               border: Border.all(color: Colors.orange[100]!),
+                             ),
+                             child: Row(
+                               children: [
+                                 const Icon(Icons.public, color: AppColors.primary, size: 20),
+                                 const SizedBox(width: 12),
+                                 Expanded(
+                                   child: Column(
+                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                     children: [
+                                       const Text('Cuisine', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                       Text(
+                                         '${recipe.region}${recipe.subRegion.isNotEmpty && recipe.subRegion != recipe.region ? ' • ${recipe.subRegion}' : ''}',
+                                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                       ),
+                                     ],
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           ),
 
-                         const SizedBox(height: 40),
+                         // Cooking Steps
+                         const Text(
+                           'Cooking Steps',
+                           style: TextStyle(
+                             fontSize: 20,
+                             fontWeight: FontWeight.bold,
+                             fontFamily: 'DM Serif Display',
+                           ),
+                         ),
+                         const SizedBox(height: 16),
+                         ...recipe.instructions.asMap().entries.map((entry) {
+                           final idx = entry.key + 1;
+                           final step = entry.value;
+                           return Container(
+                             margin: const EdgeInsets.only(bottom: 12),
+                             padding: const EdgeInsets.all(16),
+                             decoration: BoxDecoration(
+                               color: Colors.white,
+                               borderRadius: BorderRadius.circular(12),
+                               border: Border.all(color: Colors.grey[200]!),
+                             ),
+                             child: Row(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Container(
+                                   width: 32,
+                                   height: 32,
+                                   decoration: BoxDecoration(
+                                     color: AppColors.primary,
+                                     borderRadius: BorderRadius.circular(8),
+                                   ),
+                                   child: Center(
+                                     child: Text(
+                                       '$idx',
+                                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                     ),
+                                   ),
+                                 ),
+                                 const SizedBox(width: 12),
+                                 Expanded(
+                                   child: Padding(
+                                     padding: const EdgeInsets.only(top: 5.0),
+                                     child: Text(
+                                       step,
+                                       style: const TextStyle(fontSize: 15, height: 1.4, color: AppColors.textSecondary),
+                                     ),
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           );
+                         }),
+
+                         const SizedBox(height: 16),
+
+                         // Source Link
+                         if (recipe.sourceUrl.isNotEmpty)
+                           Container(
+                             padding: const EdgeInsets.all(12),
+                             margin: const EdgeInsets.only(bottom: 16),
+                             decoration: BoxDecoration(
+                               color: Colors.blue[50],
+                               borderRadius: BorderRadius.circular(12),
+                             ),
+                             child: Row(
+                               children: [
+                                 Icon(Icons.link, color: Colors.blue[700], size: 20),
+                                 const SizedBox(width: 8),
+                                 const Expanded(
+                                   child: Text(
+                                     'View full recipe with detailed instructions on the source website',
+                                     style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           ),
+
+                         const SizedBox(height: 8),
 
                          // Start Cooking Button
                          ElevatedButton(

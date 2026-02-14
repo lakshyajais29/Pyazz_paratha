@@ -52,135 +52,137 @@ class _DietTypeScreenState extends State<DietTypeScreen> {
         elevation: 0,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-               // Step Progress
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                   Text(
-                    'RECIPE TIMELINE COMPLETION', 
-                    style: TextStyle(
-                      color: AppColors.primary, 
-                      fontWeight: FontWeight.bold, 
-                      fontSize: 10,
-                      letterSpacing: 1.5
-                    )
-                  ),
-                   Text(
-                    '100%', 
-                    style: TextStyle(
-                      color: AppColors.primary, 
-                      fontWeight: FontWeight.bold, 
-                      fontSize: 10,
-                    )
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: 1.0,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                  minHeight: 8,
-                ),
-              ),
-              const SizedBox(height: 8),
-              
-               Text(
-                'FINAL STEP: PERSONALIZING YOUR PLANS', 
-                style: TextStyle(
-                  color: AppColors.primary.withOpacity(0.6), 
-                  fontWeight: FontWeight.bold, 
-                  fontSize: 8,
-                  letterSpacing: 1.0
-                )
-              ),
-
-              const SizedBox(height: 30),
-
-              Text(
-                'Any dietary preferences?',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                  fontSize: 28,
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // Veg / Non-Veg Toggle (Custom Circles)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildDietOption('Vegetarian', Icons.eco, true),
-                  const SizedBox(width: 24),
-                  _buildDietOption('Non-Vegetarian', Icons.restaurant, false),
-                ],
-              ),
-              
-              const SizedBox(height: 40),
-              
-               Text(
-                'ADDITIONAL DETAILS', 
-                style: TextStyle(
-                  color: Colors.grey, 
-                  fontWeight: FontWeight.bold, 
-                  fontSize: 10,
-                  letterSpacing: 1.5
-                )
-              ),
-              const SizedBox(height: 16),
-              
-              // Checklist
-              _buildCheckItem('I eat eggs', Icons.egg_alt, _eatEggs, (val) => setState(() => _eatEggs = val!)),
-              const SizedBox(height: 12),
-              _buildCheckItem('I eat fish', Icons.set_meal, _eatFish, (val) => setState(() => _eatFish = val!)),
-              const SizedBox(height: 12),
-              _buildCheckItem('Jain food', Icons.lightbulb, _jainFood, (val) => setState(() => _jainFood = val!)), 
-
-              const Spacer(),
-
-               ElevatedButton(
-                onPressed: () {
-                   _controller.dietType = _isVegetarian ? 'Vegetarian' : 'Non-Vegetarian';
-                   
-                   Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const KitchenSetupScreen(),
-                    ),
-                  );
-                },
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                 // Step Progress
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Continue'),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, size: 18),
+                     Text(
+                      'RECIPE TIMELINE COMPLETION', 
+                      style: TextStyle(
+                        color: AppColors.primary, 
+                        fontWeight: FontWeight.bold, 
+                        fontSize: 10,
+                        letterSpacing: 1.5
+                      )
+                    ),
+                     Text(
+                      '100%', 
+                      style: TextStyle(
+                        color: AppColors.primary, 
+                        fontWeight: FontWeight.bold, 
+                        fontSize: 10,
+                      )
+                    ),
                   ],
                 ),
-              ),
-               const Center(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 12.0),
-                  child: Text(
-                    'You can change these settings anytime in your profile.',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey,
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: 1.0,
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    minHeight: 8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                
+                 Text(
+                  'FINAL STEP: PERSONALIZING YOUR PLANS', 
+                  style: TextStyle(
+                    color: AppColors.primary.withOpacity(0.6), 
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 8,
+                    letterSpacing: 1.0
+                  )
+                ),
+
+                const SizedBox(height: 30),
+
+                Text(
+                  'Any dietary preferences?',
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                    fontSize: 28,
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                // Veg / Non-Veg Toggle (Custom Circles)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildDietOption('Vegetarian', Icons.eco, true),
+                    const SizedBox(width: 24),
+                    _buildDietOption('Non-Vegetarian', Icons.restaurant, false),
+                  ],
+                ),
+                
+                const SizedBox(height: 40),
+                
+                 Text(
+                  'ADDITIONAL DETAILS', 
+                  style: TextStyle(
+                    color: Colors.grey, 
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 10,
+                    letterSpacing: 1.5
+                  )
+                ),
+                const SizedBox(height: 16),
+                
+                // Checklist
+                _buildCheckItem('I eat eggs', Icons.egg_alt, _eatEggs, (val) => setState(() => _eatEggs = val!)),
+                const SizedBox(height: 12),
+                _buildCheckItem('I eat fish', Icons.set_meal, _eatFish, (val) => setState(() => _eatFish = val!)),
+                const SizedBox(height: 12),
+                _buildCheckItem('Jain food', Icons.lightbulb, _jainFood, (val) => setState(() => _jainFood = val!)), 
+
+                const SizedBox(height: 40),
+
+                 ElevatedButton(
+                  onPressed: () {
+                     _controller.dietType = _isVegetarian ? 'Vegetarian' : 'Non-Vegetarian';
+                     
+                     Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const KitchenSetupScreen(),
+                      ),
+                    );
+                  },
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Continue'),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, size: 18),
+                    ],
+                  ),
+                ),
+                 const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 12.0),
+                    child: Text(
+                      'You can change these settings anytime in your profile.',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
