@@ -1,8 +1,12 @@
+import '../../../core/services/storage_service.dart';
+
 class OnboardingController {
   // Singleton pattern
   static final OnboardingController _instance = OnboardingController._internal();
   factory OnboardingController() => _instance;
   OnboardingController._internal();
+
+  final StorageService _storage = StorageService();
 
   // User Data
   String name = '';
@@ -16,6 +20,41 @@ class OnboardingController {
   bool eatsEggs = true;
   bool eatsFish = false;
   bool jainFood = false;
+
+  /// Load data from storage on app start
+  Future<void> loadUserData() async {
+    name = await _storage.getString(StorageService.keyName) ?? '';
+    age = await _storage.getInt(StorageService.keyAge) ?? 24;
+    weight = await _storage.getDouble(StorageService.keyWeight) ?? 72.5;
+    height = await _storage.getDouble(StorageService.keyHeight) ?? 175.0;
+    gender = await _storage.getString(StorageService.keyGender) ?? 'Male';
+    goal = await _storage.getString(StorageService.keyGoal) ?? 'Stay Balanced';
+    dietType = await _storage.getString(StorageService.keyDietType) ?? 'Standard';
+    eatsEggs = await _storage.getBool(StorageService.keyEatsEggs) ?? true;
+    eatsFish = await _storage.getBool(StorageService.keyEatsFish) ?? false;
+    jainFood = await _storage.getBool(StorageService.keyJainFood) ?? false;
+    
+    final conditionsString = await _storage.getString(StorageService.keyHealthConditions);
+    if (conditionsString != null && conditionsString.isNotEmpty) {
+      healthConditions = conditionsString.split(',');
+    }
+  }
+
+  /// Save current data to storage
+  Future<void> saveUserData() async {
+    await _storage.saveString(StorageService.keyName, name);
+    await _storage.saveInt(StorageService.keyAge, age);
+    await _storage.saveDouble(StorageService.keyWeight, weight);
+    await _storage.saveDouble(StorageService.keyHeight, height);
+    await _storage.saveString(StorageService.keyGender, gender);
+    await _storage.saveString(StorageService.keyGoal, goal);
+    await _storage.saveString(StorageService.keyDietType, dietType);
+    await _storage.saveBool(StorageService.keyEatsEggs, eatsEggs);
+    await _storage.saveBool(StorageService.keyEatsFish, eatsFish);
+    await _storage.saveBool(StorageService.keyJainFood, jainFood);
+    await _storage.saveString(StorageService.keyHealthConditions, healthConditions.join(','));
+    await _storage.saveBool(StorageService.keyOnboardingComplete, true);
+  }
 
   // Methods to update data
   void updateName(String newName) {
@@ -44,6 +83,11 @@ class OnboardingController {
     if (jain != null) jainFood = jain;
   }
 
+  // Update existing methods to save data? 
+  // For better performance, we might want to call saveUserData() only at the end of onboarding
+  // or when leaving a screen, rather than on every keystroke.
+  // The current implementation assumes saveUserData() is called explicitly, e.g. on "Next/Finish" button.
+  
   /// Get exclude ingredients based on health conditions
   List<String> getExcludeIngredients() {
     List<String> excludes = [];
@@ -69,6 +113,8 @@ class OnboardingController {
       excludes.add('Meat');
       if (!eatsFish) excludes.add('Seafood');
       if (!eatsEggs) excludes.add('Eggs');
+    } else if (dietType == 'Vegan') {
+       excludes.addAll(['Meat', 'Seafood', 'Eggs', 'Dairy']);
     }
     return excludes;
   }

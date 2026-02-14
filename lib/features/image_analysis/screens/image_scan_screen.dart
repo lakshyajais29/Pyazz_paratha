@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 
 import 'analysis_result_screen.dart';
@@ -13,6 +14,7 @@ class ImageScanScreen extends StatefulWidget {
 
 class _ImageScanScreenState extends State<ImageScanScreen> with WidgetsBindingObserver {
   CameraController? _controller;
+  final ImagePicker _picker = ImagePicker();
   bool _isCameraInitialized = false;
   bool _isScanning = true; // Simulating scanning state
 
@@ -43,6 +45,27 @@ class _ImageScanScreenState extends State<ImageScanScreen> with WidgetsBindingOb
       }
     } catch (e) {
       debugPrint('Camera initialization failed: $e');
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      // Limit image quality to reduce payload size (crucial for API timeouts/limits)
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50, 
+        maxWidth: 1024, // Resize large images
+      );
+      if (image != null && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AnalysisResultScreen(imagePath: image.path),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
     }
   }
 
@@ -151,6 +174,22 @@ class _ImageScanScreenState extends State<ImageScanScreen> with WidgetsBindingOb
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.photo_library, color: Colors.white),
+                  label: const Text(
+                    'Upload from Gallery',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.black26,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                 ),

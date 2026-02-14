@@ -1,0 +1,28 @@
+﻿{
+    "success":  "true",
+    "message":  "Recipe of the day fetched successfully.",
+    "payload":  {
+                    "data":  [
+                                 {
+                                     "recipe_id":  134088,
+                                     "recipe_title":  "Mark’s World Famous Dutch Oven Beef Stew",
+                                     "total_time":  "90",
+                                     "cook_time":  "0",
+                                     "prep_time":  "0",
+                                     "region":  "Belgian",
+                                     "sub_region":  "Dutch",
+                                     "continent":  "European",
+                                     "url":  "http://www.geniuskitchen.com/recipe/mark-s-world-famous-dutch-oven-beef-stew-212703",
+                                     "img_url":  "https://geniuskitchen.sndimg.com/gk/img/gk-shareGraphic.png",
+                                     "calories":  510.4,
+                                     "energy":  1865.1031,
+                                     "protein":  277.4469,
+                                     "fat":  34.7433,
+                                     "ingredient_phrase":  "1/2 teaspoon salt",
+                                     "ingredient":  "salt",
+                                     "dietrx_category":  "Additive",
+                                     "generic_name":  "Salt"
+                                 }
+                             ]
+                }
+}

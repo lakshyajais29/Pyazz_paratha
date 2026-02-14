@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/app_strings.dart';
 import '../models/nutrition_model.dart';
@@ -6,39 +7,85 @@ import '../models/nutrition_model.dart';
 /// Mistral AI Vision service for food image analysis
 /// Uses Pixtral model via Chat Completions API
 class GeminiService {
-  static const String _apiUrl = AppStrings.mistralApiUrl;
-  static const String _apiKey = AppStrings.mistralApiKey;
-
   /// Analyze a food photo and return nutritional information
-  /// [base64Image] - Base64 encoded image string
+  /// Tries multiple providers in sequence: Mistral Primary -> Mistral Secondary -> Fal AI
   Future<NutritionInfo?> analyzeFoodImage(String base64Image) async {
+    final providers = [
+      _ProviderConfig(
+        name: 'Mistral AI (Primary)',
+        url: AppStrings.mistralApiUrl,
+        apiKey: AppStrings.mistralApiKeyPrimary,
+        model: 'pixtral-12b-2409',
+      ),
+      _ProviderConfig(
+        name: 'Mistral AI (Secondary)',
+        url: AppStrings.mistralApiUrl,
+        apiKey: AppStrings.mistralApiKeySecondary,
+        model: 'pixtral-12b-2409',
+      ),
+      _ProviderConfig(
+        name: 'Fal AI (Pixtral)',
+        url: 'https://queue.fal.run/fal-ai/pixtral-12b/v1/chat/completions', // OpenAI-compatible endpoint
+        apiKey: AppStrings.falAiApiKey, 
+        model: 'pixtral-12b', // Model name might be ignored by Fal but good to have
+        isFal: true,
+      ),
+    ];
+
+    for (final provider in providers) {
+      debugPrint('Attempting analysis with ${provider.name}...');
+      try {
+        final result = await _analyzeWithProvider(provider, base64Image);
+        if (result != null) {
+          debugPrint('Success with ${provider.name}');
+          return result;
+        }
+      } catch (e) {
+        debugPrint('Failed with ${provider.name}: $e');
+      }
+      debugPrint('Switching to next provider...');
+    }
+    
+    debugPrint('All providers failed.');
+    throw Exception('All AI providers failed. Check internet or API keys.');
+  }
+
+  Future<NutritionInfo?> _analyzeWithProvider(_ProviderConfig provider, String base64Image) async {
+    // Fal AI requires a different key format usually (Key id:secret), but strictly speaking
+    // their OpenAI compatible endpoint uses "Authorization: Key <key_id:key_secret>"
+    // or standard Bearer. Fal docs say "Authorization: Key ..."
+    final authHeader = provider.isFal 
+        ? 'Key ${provider.apiKey}' 
+        : 'Bearer ${provider.apiKey}';
+
     try {
       final response = await http.post(
-        Uri.parse(_apiUrl),
+        Uri.parse(provider.url),
         headers: {
-          'Authorization': 'Bearer $_apiKey',
+          'Authorization': authHeader,
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'model': 'pixtral-12b-2409',
+          'model': provider.model,
           'messages': [
             {
               'role': 'user',
               'content': [
                 {
                   'type': 'text',
-                  'text': '''Analyze this food image. Identify the food item(s) and provide nutritional information.
-Respond ONLY with a valid JSON object (no markdown, no code blocks) with these exact keys:
+                  'text': '''Identify the food in this image.
+Respond ONLY with this JSON structure:
 {
-  "food_name": "name of the food",
-  "calories": estimated calories as integer,
-  "protein": protein in grams as number,
-  "carbs": carbohydrates in grams as number,
-  "fat": fat in grams as number,
-  "fiber": fiber in grams as number,
-  "sugar": sugar in grams as number,
-  "serving_size": "estimated serving size"
-}'''
+  "food_name": "Food Name",
+  "calories": 100,
+  "protein": 10,
+  "carbs": 10,
+  "fat": 10,
+  "fiber": 0,
+  "sugar": 0,
+  "serving_size": "1 serving"
+}
+If unsure, estimate.'''
                 },
                 {
                   'type': 'image_url',
@@ -49,24 +96,28 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks) with these e
               ]
             }
           ],
-          'max_tokens': 500,
+          'max_tokens': 300,
           'temperature': 0.1,
         }),
-      );
+      ).timeout(const Duration(seconds: 30)); // Add timeout
 
+      debugPrint('${provider.name} Response Status: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final content = data['choices']?[0]?['message']?['content'];
+        debugPrint('${provider.name} Content: $content'); // LOG THE CONTENT
         if (content != null) {
-          // Parse JSON from the response
           final nutritionJson = _extractJson(content);
           if (nutritionJson != null) {
             return NutritionInfo.fromMistralResponse(nutritionJson);
           }
         }
+      } else {
+        debugPrint('${provider.name} Error Body: ${response.body}');
       }
     } catch (e) {
-      // debugPrint('Mistral AI error: $e');
+       debugPrint('Error with ${provider.name}: $e');
     }
     return null;
   }
@@ -96,4 +147,20 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks) with these e
     }
     return null;
   }
+}
+
+class _ProviderConfig {
+  final String name;
+  final String url;
+  final String apiKey;
+  final String model;
+  final bool isFal;
+
+  _ProviderConfig({
+    required this.name,
+    required this.url,
+    required this.apiKey,
+    required this.model,
+    this.isFal = false,
+  });
 }
