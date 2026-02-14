@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import '../../../core/services/recipe_service.dart';
 import '../../../core/models/recipe_model.dart';
 import '../../../core/models/nutrition_model.dart';
 import '../../onboarding/controller/onboarding_controller.dart';
 import '../../../shared/utils/bmr_calculator.dart';
 
-class DashboardController {
+class DashboardController with ChangeNotifier {
   // Singleton
   static final DashboardController _instance = DashboardController._internal();
   factory DashboardController() => _instance;
@@ -63,9 +64,11 @@ class DashboardController {
   bool isLoading = false;
 
   // --- Actions ---
+  // Actions
   Future<void> fetchDailyRecipe() async {
     isLoading = true;
     recommendedMeals.clear();
+    notifyListeners(); // Notify loading state
 
     try {
       // 1. Fetch a batch of recipes
@@ -168,6 +171,7 @@ class DashboardController {
       // debugPrint('Error loading dashboard meals: $e');
     } finally {
       isLoading = false;
+      notifyListeners(); // Notify data loaded
     }
   }
 
@@ -179,6 +183,7 @@ class DashboardController {
       nutrition: nutrition,
       timestamp: DateTime.now(),
     ));
+    notifyListeners(); // Notify UI to update
   }
 
   void addWater(double liters) {

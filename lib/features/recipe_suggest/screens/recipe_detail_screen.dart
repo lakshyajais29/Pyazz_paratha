@@ -52,6 +52,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           !(finalRecipe.instructions.length == 1 && 
             finalRecipe.instructions.first.contains('Follow the recipe'));
 
+      // AI Generation disabled per user request
+      /*
       if (!hasValidInstructions) {
         if (mounted) setState(() => _isGeneratingAI = true);
         
@@ -112,6 +114,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         } finally {
            if (mounted) setState(() => _isGeneratingAI = false);
         }
+      */
 
       if (mounted) {
         setState(() {

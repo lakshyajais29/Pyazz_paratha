@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../onboarding/controller/onboarding_controller.dart';
-import '../../health_engine/controller/health_engine_controller.dart';
+import '../../dashboard/controller/dashboard_controller.dart';
+// import '../../health_engine/controller/health_engine_controller.dart';
 
 class HealthSummaryScreen extends StatelessWidget {
   const HealthSummaryScreen({super.key});
 
   @override
+  @override
   Widget build(BuildContext context) {
     final controller = OnboardingController();
-    final healthEngine = HealthEngineController();
+    final dashboard = DashboardController();
+    // final healthEngine = HealthEngineController(); // Deprecated for dynamic data
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -37,214 +40,233 @@ class HealthSummaryScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // BMI/BMR Cards Row
-            Row(
+      body: ListenableBuilder(
+        listenable: dashboard,
+        builder: (context, child) {
+          final bmr = dashboard.bmr;
+          
+          // Helper to calculate BMI since DashboardController doesn't expose it directly yet
+          // or we can calculate it here using OnboardingController
+          final weight = controller.weight;
+          final height = controller.height; // cm
+          final heightM = height / 100;
+          final bmi = weight / (heightM * heightM);
+          
+          String bmiCategory = 'Normal';
+          if (bmi < 18.5) bmiCategory = 'Underweight';
+          else if (bmi >= 25 && bmi < 30) bmiCategory = 'Overweight';
+          else if (bmi >= 30) bmiCategory = 'Obese';
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'BMR',
-                    '${healthEngine.bmr.toStringAsFixed(0)} kcal',
-                    'Daily baseline burn',
-                    Icons.local_fire_department,
-                    AppColors.primary,
+                // BMI/BMR Cards Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        'BMR',
+                        '${bmr.toStringAsFixed(0)} kcal',
+                        'Daily baseline burn',
+                        Icons.local_fire_department,
+                        AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatCard(
+                        'BMI',
+                        bmi.toStringAsFixed(1),
+                        bmiCategory,
+                        Icons.monitor_weight,
+                        _bmiColor(bmi),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Calorie Target Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'DAILY CALORIE TARGET',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${dashboard.calorieGoal.toStringAsFixed(0)} kcal',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Based on ${controller.goal}',
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    'BMI',
-                    healthEngine.bmi.toStringAsFixed(1),
-                    healthEngine.bmiCategory,
-                    Icons.monitor_weight,
-                    _bmiColor(healthEngine.bmi),
+                const SizedBox(height: 24),
+
+                // Macro Goals
+                const Text(
+                  'RECOMMENDED MACROS',
+                  style: TextStyle(
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
                   ),
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMacroCard(
+                        'Protein',
+                        '${dashboard.proteinGoal.toStringAsFixed(0)}g',
+                        Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMacroCard(
+                        'Carbs',
+                        '${dashboard.carbsGoal.toStringAsFixed(0)}g',
+                        Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMacroCard(
+                        'Fat',
+                        '${dashboard.fatGoal.toStringAsFixed(0)}g',
+                        Colors.redAccent,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Today's Progress
+                const Text(
+                  'TODAY\'S PROGRESS',
+                  style: TextStyle(
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _buildProgressRow(
+                        'Calories',
+                        '${dashboard.caloriesConsumed} / ${dashboard.calorieGoal.toStringAsFixed(0)} kcal',
+                        dashboard.calorieGoal > 0 
+                            ? (dashboard.caloriesConsumed / dashboard.calorieGoal).clamp(0.0, 1.0)
+                            : 0.0,
+                        AppColors.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildProgressRow(
+                        'Protein',
+                        '${dashboard.proteinCurrent.toStringAsFixed(0)}g / ${dashboard.proteinGoal.toStringAsFixed(0)}g',
+                        dashboard.proteinGoal > 0
+                            ? (dashboard.proteinCurrent / dashboard.proteinGoal).clamp(0.0, 1.0)
+                            : 0.0,
+                        Colors.green,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildProgressRow(
+                        'Meals Logged',
+                        '${dashboard.mealsLogged}',
+                        (dashboard.mealsLogged / 4).clamp(0.0, 1.0), // 4 meals target
+                        Colors.blue,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Health Profile Summary
+                const Text(
+                  'YOUR PROFILE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _buildInfoRow('Age', '${controller.age} years'),
+                      _buildInfoRow('Weight', '${controller.weight} kg'),
+                      _buildInfoRow('Height', '${controller.height} cm'),
+                      _buildInfoRow('Gender', controller.gender),
+                      _buildInfoRow('Goal', controller.goal),
+                      _buildInfoRow('Diet', controller.dietType),
+                      if (controller.healthConditions.isNotEmpty)
+                        _buildInfoRow('Conditions', controller.healthConditions.join(', ')),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Calorie Target Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
-                ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'DAILY CALORIE TARGET',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${healthEngine.dailyCalorieTarget.toStringAsFixed(0)} kcal',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Based on ${controller.goal}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Macro Goals
-            const Text(
-              'RECOMMENDED MACROS',
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 1.5,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMacroCard(
-                    'Protein',
-                    '${healthEngine.recommendedMacros['protein']?.toStringAsFixed(0)}g',
-                    Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMacroCard(
-                    'Carbs',
-                    '${healthEngine.recommendedMacros['carbs']?.toStringAsFixed(0)}g',
-                    Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMacroCard(
-                    'Fat',
-                    '${healthEngine.recommendedMacros['fat']?.toStringAsFixed(0)}g',
-                    Colors.redAccent,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Today's Progress
-            const Text(
-              'TODAY\'S PROGRESS',
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 1.5,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildProgressRow(
-                    'Calories',
-                    '${healthEngine.todayCalories} / ${healthEngine.dailyCalorieTarget.toStringAsFixed(0)} kcal',
-                    healthEngine.dailyCalorieTarget > 0
-                        ? (healthEngine.todayCalories / healthEngine.dailyCalorieTarget).clamp(0.0, 1.0)
-                        : 0.0,
-                    AppColors.primary,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildProgressRow(
-                    'Protein',
-                    '${healthEngine.todayProtein.toStringAsFixed(0)}g / ${healthEngine.recommendedMacros['protein']?.toStringAsFixed(0)}g',
-                    (healthEngine.recommendedMacros['protein'] ?? 1) > 0
-                        ? (healthEngine.todayProtein / (healthEngine.recommendedMacros['protein'] ?? 1)).clamp(0.0, 1.0)
-                        : 0.0,
-                    Colors.green,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildProgressRow(
-                    'Meals Logged',
-                    '${healthEngine.mealsLoggedToday}',
-                    (healthEngine.mealsLoggedToday / 4).clamp(0.0, 1.0), // 4 meals target
-                    Colors.blue,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Health Profile Summary
-            const Text(
-              'YOUR PROFILE',
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 1.5,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildInfoRow('Age', '${controller.age} years'),
-                  _buildInfoRow('Weight', '${controller.weight} kg'),
-                  _buildInfoRow('Height', '${controller.height} cm'),
-                  _buildInfoRow('Gender', controller.gender),
-                  _buildInfoRow('Goal', controller.goal),
-                  _buildInfoRow('Diet', controller.dietType),
-                  if (controller.healthConditions.isNotEmpty)
-                    _buildInfoRow('Conditions', controller.healthConditions.join(', ')),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
