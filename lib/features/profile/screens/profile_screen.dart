@@ -295,6 +295,17 @@ class ProfileScreen extends StatelessWidget {
                      _buildSettingsItem(Icons.mic, 'Voice Settings', ''),
                      _buildDivider(),
                      _buildSwitchItem(Icons.dark_mode, 'Dark Mode'),
+                     _buildDivider(),
+                     _buildSettingsItem(
+                       Icons.logout, 
+                       'Sign Out', 
+                       'Clear all data and restart', 
+                       isDestructive: true,
+                       onTap: () async {
+                          // Clear data and restart
+                          await controller.signOut(context);
+                       }
+                     ),
                    ],
                  ),
                ),
@@ -306,32 +317,35 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingsItem(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.orange[50],
-              shape: BoxShape.circle,
+  Widget _buildSettingsItem(IconData icon, String title, String subtitle, {bool isDestructive = false, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDestructive ? Colors.red[50] : Colors.orange[50],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: isDestructive ? Colors.red : AppColors.primary, size: 20),
             ),
-            child: Icon(icon, color: AppColors.primary, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                if (subtitle.isNotEmpty)
-                  Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDestructive ? Colors.red : Colors.black)),
+                  if (subtitle.isNotEmpty)
+                    Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right, color: Colors.grey),
-        ],
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

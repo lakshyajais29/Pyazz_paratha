@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../../../core/constants/app_colors.dart';
 import 'welcome_screen.dart'; // Navigate to Welcome
 
@@ -13,8 +14,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Simulate loading for 3 seconds then navigate
-    Future.delayed(const Duration(seconds: 3), () {
+    // Increase duration to 3.5 seconds for Lottie to complete once
+    Future.delayed(const Duration(milliseconds: 3500), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -29,39 +30,22 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
               const Spacer(),
-              // Floating Food Images (Mockup with colors/icons)
+              // Lottie Animation
               SizedBox(
                 height: 300,
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 40,
-                      left: 20,
-                      child: _buildFloatingImage(Colors.redAccent, Icons.apple), // Tomato/Apple
-                    ),
-                    Positioned(
-                      top: 80,
-                      right: 30,
-                      child: _buildFloatingImage(Colors.green, Icons.eco), // Avocado
-                    ),
-                    Positioned(
-                      bottom: 60,
-                      left: 40,
-                      child: _buildFloatingImage(Colors.red[900]!, Icons.local_fire_department), // Chili
-                    ),
-                    Positioned(
-                      bottom: 40,
-                      right: 60,
-                      child: _buildFloatingImage(Colors.yellow, Icons.wb_sunny), // Lemon
-                    ),
-                  ],
+                child: Lottie.asset(
+                  'assets/images/edited_co_chef.json',
+                  fit: BoxFit.contain,
+                  repeat: false,
                 ),
               ),
               const SizedBox(height: 40),
@@ -95,7 +79,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 height: 8,
                 width: 200,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(50), // Updated for Flutter 3.27+ withAlpha expects int 0-255
+                  color: AppColors.primary.withAlpha(50), 
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
@@ -132,33 +116,13 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                '© 2024 SNAPDIET LABS',
+                '© 2026 Pyazz Paratha',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingImage(Color color, IconData icon) {
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25), // Updated opacity
-            blurRadius: 10,
-            offset: const Offset(0, 5),
           ),
-        ],
-      ),
-      child: Center(
-        child: Icon(icon, color: color, size: 40),
+        ),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import '../../../core/services/storage_service.dart';
 
 class OnboardingController {
@@ -117,5 +118,31 @@ class OnboardingController {
        excludes.addAll(['Meat', 'Seafood', 'Eggs', 'Dairy']);
     }
     return excludes;
+  }
+  /// Sign Out: Clear all data and navigate to welcome
+  Future<void> signOut(context) async {
+    // 1. Clear Storage
+    await _storage.clearAllData();
+    
+    // 2. Reset In-Memory Data (Singleton)
+    _resetData();
+
+    // 3. Navigate to Welcome Screen explicitly
+    // Using '/welcome' because '/' might still point to Dashboard if app started as logged-in
+    Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (route) => false);
+  }
+
+  void _resetData() {
+    name = '';
+    age = 24;
+    weight = 72.5;
+    height = 175.0;
+    gender = 'Male';
+    healthConditions = [];
+    goal = 'Stay Balanced';
+    dietType = 'Standard';
+    eatsEggs = true;
+    eatsFish = false;
+    jainFood = false;
   }
 }

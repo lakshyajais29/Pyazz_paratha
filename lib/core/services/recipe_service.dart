@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/recipe_model.dart';
+import '../../features/onboarding/controller/onboarding_controller.dart';
 
 class RecipeService {
   static const String _baseUrl = 'http://cosylab.iiitd.edu.in/recipe2-api/recipe';
@@ -30,7 +31,19 @@ class RecipeService {
 
   // Fetch smart recipe (Recipe of Day with filters)
   Future<Recipe?> getSmartRecipe() async {
-    const url = '$_baseUrl/recipe-day/with-ingredients-categories?excludeIngredients=water,flour&excludeCategories=Dairy';
+    final ingredients = OnboardingController().getExcludeIngredients().join(',');
+    final categories = OnboardingController().getExcludeCategories().join(',');
+    
+    // Construct dynamic URL
+    String url = '$_baseUrl/recipe-day/with-ingredients-categories';
+    List<String> queryParams = [];
+    if (ingredients.isNotEmpty) queryParams.add('excludeIngredients=$ingredients');
+    if (categories.isNotEmpty) queryParams.add('excludeCategories=$categories');
+    
+    if (queryParams.isNotEmpty) {
+      url += '?${queryParams.join('&')}';
+    }
+    
     try {
       final response = await http.get(Uri.parse(url), headers: {'x-api-key': _apiKey});
       if (response.statusCode == 200) {

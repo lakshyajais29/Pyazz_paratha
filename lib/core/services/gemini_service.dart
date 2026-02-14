@@ -122,6 +122,74 @@ If unsure, estimate.'''
     return null;
   }
 
+  /// Generate recipe instructions for a given title
+  Future<List<String>?> generateRecipeInstructions(String recipeTitle) async {
+    final providers = [
+      _ProviderConfig(
+        name: 'Mistral AI (Primary)',
+        url: AppStrings.mistralApiUrl,
+        apiKey: AppStrings.mistralApiKeyPrimary,
+        model: 'pixtral-12b-2409',
+      ),
+      _ProviderConfig(
+        name: 'Mistral AI (Secondary)',
+        url: AppStrings.mistralApiUrl,
+        apiKey: AppStrings.mistralApiKeySecondary,
+        model: 'pixtral-12b-2409',
+      ),
+    ];
+
+    for (final provider in providers) {
+      try {
+        final result = await _generateWithProvider(provider, recipeTitle);
+        if (result != null && result.isNotEmpty) {
+          return result;
+        }
+      } catch (e) {
+        debugPrint('Failed generation with ${provider.name}: $e');
+      }
+    }
+    return null;
+  }
+
+  Future<List<String>?> _generateWithProvider(_ProviderConfig provider, String title) async {
+    final authHeader = 'Bearer ${provider.apiKey}';
+    final response = await http.post(
+      Uri.parse(provider.url),
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'model': provider.model, // Reuse Pixtral model for text is fine
+        'messages': [
+          {
+            'role': 'user',
+            'content': 'Write a simple, step-by-step cooking recipe for "$title". Provide ONLY the instructions as a numbered list. Do not include ingredients or intro text.'
+          }
+        ],
+        'max_tokens': 500,
+        'temperature': 0.7,
+      }),
+    ).timeout(const Duration(seconds: 30));
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final content = data['choices']?[0]?['message']?['content'];
+      if (content != null) {
+        // Clean up the response to get a list of strings
+        final String text = content.toString();
+        // Split by newlines and remove numbering/bullets
+        final List<String> steps = text.split('\n')
+            .where((line) => line.trim().isNotEmpty)
+            .map((line) => line.replaceAll(RegExp(r'^\d+\.\s*|[-*]\s*'), '').replaceAll('**', '').trim())
+            .toList();
+        return steps;
+      }
+    }
+    return null;
+  }
+
   /// Extract JSON from possible markdown-wrapped response
   Map<String, dynamic>? _extractJson(String content) {
     try {

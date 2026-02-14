@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../dashboard/screens/dashboard_screen.dart'; // Final Destination
+import '../controller/onboarding_controller.dart';
 
 class KitchenSetupScreen extends StatefulWidget {
   const KitchenSetupScreen({super.key});
@@ -80,14 +81,20 @@ class _KitchenSetupScreenState extends State<KitchenSetupScreen> with TickerProv
       }
     });
 
-    Timer(const Duration(seconds: 6), () {
+    Timer(const Duration(seconds: 6), () async {
       if(mounted) {
         setState(() { _progress = 1.0; });
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-          (route) => false,
-        );
+        
+        // Save user data and mark onboarding as complete
+        await OnboardingController().saveUserData();
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            (route) => false,
+          );
+        }
       }
     });
   }

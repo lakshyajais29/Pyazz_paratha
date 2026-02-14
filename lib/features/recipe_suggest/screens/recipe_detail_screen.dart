@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/recipe_model.dart';
 import '../../../core/services/recipe_service.dart';
+import '../../../core/services/gemini_service.dart';
 import '../../cooking_assistant/screens/cooking_screen.dart'; // Navigate to Cooking
 
 class RecipeDetailScreen extends StatefulWidget {
@@ -15,9 +16,11 @@ class RecipeDetailScreen extends StatefulWidget {
 
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   final RecipeService _recipeService = RecipeService();
+  final GeminiService _geminiService = GeminiService(); // Mistral AI Service
   Recipe? _detailedRecipe;
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isGeneratingAI = false;
 
   @override
   void initState() {
@@ -34,9 +37,48 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     try {
       final detailedRecipe = await _recipeService.getRecipeByTitle(widget.recipe.title);
       
+      Recipe? finalRecipe = detailedRecipe ?? widget.recipe;
+      
+      // Check if instructions are missing or just a placeholder.
+      bool hasValidInstructions = finalRecipe.instructions.isNotEmpty && 
+          !(finalRecipe.instructions.length == 1 && 
+            finalRecipe.instructions.first.contains('Follow the recipe'));
+
+      if (!hasValidInstructions) {
+        if (mounted) setState(() => _isGeneratingAI = true);
+        
+        try {
+          debugPrint('Instructions missing or placeholder. Generating with AI for: ${finalRecipe.title}');
+          final aiInstructions = await _geminiService.generateRecipeInstructions(finalRecipe.title);
+          
+          if (aiInstructions != null && aiInstructions.isNotEmpty) {
+            // Create a new recipe object with AI instructions
+            finalRecipe = Recipe(
+              id: finalRecipe!.id,
+              title: finalRecipe.title,
+              description: finalRecipe.description,
+              imageUrl: finalRecipe.imageUrl,
+              cookingTimeMinutes: finalRecipe.cookingTimeMinutes,
+              calories: finalRecipe.calories,
+              ingredients: finalRecipe.ingredients,
+              instructions: aiInstructions,
+              macros: finalRecipe.macros,
+              rating: finalRecipe.rating,
+              region: finalRecipe.region,
+              subRegion: finalRecipe.subRegion,
+              sourceUrl: finalRecipe.sourceUrl,
+            );
+          }
+        } catch (e) {
+          debugPrint('AI Generation failed: $e');
+        } finally {
+          if (mounted) setState(() => _isGeneratingAI = false);
+        }
+      }
+
       if (mounted) {
         setState(() {
-          _detailedRecipe = detailedRecipe ?? widget.recipe; // Fallback to original recipe
+          _detailedRecipe = finalRecipe;
           _isLoading = false;
         });
       }
@@ -51,14 +93,71 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     }
   }
 
+  Future<void> _generateAIRecipe() async {
+    final currentRecipe = _detailedRecipe ?? widget.recipe;
+    
+    setState(() => _isGeneratingAI = true);
+    
+    try {
+      debugPrint('Manual AI Generation for: ${currentRecipe.title}');
+      final aiInstructions = await _geminiService.generateRecipeInstructions(currentRecipe.title);
+      
+      if (aiInstructions != null && aiInstructions.isNotEmpty) {
+        if (mounted) {
+           setState(() {
+             // Create a new recipe object with AI instructions
+             _detailedRecipe = Recipe(
+               id: currentRecipe.id,
+               title: currentRecipe.title,
+               description: currentRecipe.description,
+               imageUrl: currentRecipe.imageUrl,
+               cookingTimeMinutes: currentRecipe.cookingTimeMinutes,
+               calories: currentRecipe.calories,
+               ingredients: currentRecipe.ingredients,
+               instructions: aiInstructions,
+               macros: currentRecipe.macros,
+               rating: currentRecipe.rating,
+               region: currentRecipe.region,
+               subRegion: currentRecipe.subRegion,
+               sourceUrl: currentRecipe.sourceUrl,
+             );
+             _isGeneratingAI = false;
+           });
+           
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(
+               content: Text('✨ Recipe instructions generated successfully!'),
+               backgroundColor: AppColors.primary,
+             ),
+           );
+        }
+      } else {
+        throw Exception('No instructions generated');
+      }
+    } catch (e) {
+      debugPrint('AI Generation failed: $e');
+      if (mounted) {
+        setState(() => _isGeneratingAI = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Failed to generate recipe: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Use the detailed recipe if available, otherwise use the passed recipe
     final recipe = _detailedRecipe ?? widget.recipe;
+    // Instructions are now handled in _fetchRecipeDetails (either API, AI, or fallback)
+    // But we keep this check just in case
+    final instructions = recipe.instructions.isNotEmpty 
+        ? recipe.instructions 
+        : widget.recipe.instructions;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _isLoading
+      body: (_isLoading || _isGeneratingAI)
           ? _buildLoadingState()
           : CustomScrollView(
               slivers: [
@@ -233,7 +332,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
                          const SizedBox(height: 30),
 
-                         // Region & Cuisine Info
+                          // Region & Cuisine Info
                          if (recipe.region.isNotEmpty)
                            Container(
                              padding: const EdgeInsets.all(16),
@@ -263,6 +362,22 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                              ),
                            ),
 
+                         // AI Generation Button
+                         Container(
+                           width: double.infinity,
+                           margin: const EdgeInsets.only(bottom: 24),
+                           child: ElevatedButton.icon(
+                             onPressed: _generateAIRecipe,
+                             
+                             label: const Text('Show Recipe', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                             style: ElevatedButton.styleFrom(
+                               backgroundColor: AppColors.primary,
+                               padding: const EdgeInsets.symmetric(vertical: 12),
+                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                             ),
+                           ),
+                         ),
+
                          // Cooking Steps
                          const Text(
                            'Cooking Steps',
@@ -273,7 +388,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                            ),
                          ),
                          const SizedBox(height: 16),
-                         ...recipe.instructions.asMap().entries.map((entry) {
+                         ...instructions.asMap().entries.map((entry) {
                            final idx = entry.key + 1;
                            final step = entry.value;
                            return Container(
@@ -386,7 +501,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Loading recipe details...',
+            _isGeneratingAI 
+                ? 'Creating step-by-step instructions with AI...' 
+                : 'Loading recipe details...',
             style: TextStyle(
               color: Colors.grey[600],
               fontSize: 16,
